@@ -33,7 +33,6 @@ func InitDB() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close()
 
 	// Bağlantı test ediliyor
 	err = db.Ping()
