@@ -1,3 +1,9 @@
+// @title SEProject API
+// @version 1.0
+// @description RESTful API for restaurant ordering system
+// @host localhost:8080
+// @BasePath /
+
 package main
 
 import (
@@ -11,13 +17,14 @@ import (
 	user "SEProject/User"
 	"SEProject/config"
 
+	_ "SEProject/docs"
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	_ "github.com/lib/pq"
+	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
 func main() {
-	// 1. Supabase / DATABASE_URL testi (isteğe bağlı)
 	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
 		conn, err := pgx.Connect(context.Background(), databaseURL)
 		if err != nil {
@@ -39,6 +46,7 @@ func main() {
 	//defer config.DB.Close()
 	// 3. Echo Web Framework başlatılıyor
 	e := echo.New()
+	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	// USER
 	userRepo := user.NewRepository(config.DB)
