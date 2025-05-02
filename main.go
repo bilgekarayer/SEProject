@@ -1,22 +1,43 @@
 package main
 
 import (
+	"context"
+	"log"
+	"os"
+
 	menu "SEProject/Menu"
 	order "SEProject/Order"
 	restaurant "SEProject/Restaurant"
 	user "SEProject/User"
 	"SEProject/config"
+
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	_ "github.com/lib/pq"
-	"log"
 )
 
 func main() {
-	// DB başlat
+	// 1. Supabase / DATABASE_URL testi (isteğe bağlı)
+	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
+		conn, err := pgx.Connect(context.Background(), databaseURL)
+		if err != nil {
+			log.Fatalf("Failed to connect to DATABASE_URL: %v", err)
+		}
+		defer conn.Close(context.Background())
+
+		var version string
+		if err := conn.QueryRow(context.Background(), "SELECT version()").Scan(&version); err != nil {
+			log.Fatalf("Query failed: %v", err)
+		}
+		log.Println("Connected to Supabase (pgx):", version)
+	} else {
+		log.Println("Warning: DATABASE_URL not set, skipping pgx connection test")
+	}
+
+	// 2. Klasik InitDB bağlantısı (lib/pq)
 	config.InitDB()
 	//defer config.DB.Close()
-
-	// Echo başlat
+	// 3. Echo Web Framework başlatılıyor
 	e := echo.New()
 
 	// USER
