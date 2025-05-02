@@ -17,6 +17,7 @@ func NewHandler(e *echo.Echo, service *Service) {
 	e.POST("/admin/restaurant", h.CreateRestaurant)
 	e.PUT("/admin/restaurant/:id", h.UpdateRestaurant)
 	e.DELETE("/admin/restaurant/:id", h.DeleteRestaurant)
+
 }
 
 func (h *Handler) GetAllRestaurants(c echo.Context) error {
