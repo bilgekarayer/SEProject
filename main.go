@@ -1,23 +1,52 @@
+// @title SEProject API
+// @version 1.0
+// @description RESTful API for restaurant ordering system
+// @host localhost:8080
+// @BasePath /
+
 package main
 
 import (
+	"context"
+	"log"
+	"os"
+
 	menu "SEProject/Menu"
 	order "SEProject/Order"
 	restaurant "SEProject/Restaurant"
 	user "SEProject/User"
 	"SEProject/config"
+
+	_ "SEProject/docs"
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	_ "github.com/lib/pq"
-	"log"
+	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
 func main() {
-	// DB başlat
+	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
+		conn, err := pgx.Connect(context.Background(), databaseURL)
+		if err != nil {
+			log.Fatalf("Failed to connect to DATABASE_URL: %v", err)
+		}
+		defer conn.Close(context.Background())
+
+		var version string
+		if err := conn.QueryRow(context.Background(), "SELECT version()").Scan(&version); err != nil {
+			log.Fatalf("Query failed: %v", err)
+		}
+		log.Println("Connected to Supabase (pgx):", version)
+	} else {
+		log.Println("Warning: DATABASE_URL not set, skipping pgx connection test")
+	}
+
+	// 2. Klasik InitDB bağlantısı (lib/pq)
 	config.InitDB()
 	//defer config.DB.Close()
-
-	// Echo başlat
+	// 3. Echo Web Framework başlatılıyor
 	e := echo.New()
+	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	// USER
 	userRepo := user.NewRepository(config.DB)
