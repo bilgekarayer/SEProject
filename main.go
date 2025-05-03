@@ -1,9 +1,3 @@
-// @title SEProject API
-// @version 1.0
-// @description RESTful API for restaurant ordering system
-// @host localhost:8080
-// @BasePath /
-
 package main
 
 import (
@@ -13,18 +7,19 @@ import (
 
 	menu "SEProject/Menu"
 	order "SEProject/Order"
+	product "SEProject/Product"
 	restaurant "SEProject/Restaurant"
+	search "SEProject/Search"
 	user "SEProject/User"
 	"SEProject/config"
 
-	_ "SEProject/docs"
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	_ "github.com/lib/pq"
-	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
 func main() {
+	// 1. Supabase / DATABASE_URL testi (isteğe bağlı)
 	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
 		conn, err := pgx.Connect(context.Background(), databaseURL)
 		if err != nil {
@@ -44,9 +39,9 @@ func main() {
 	// 2. Klasik InitDB bağlantısı (lib/pq)
 	config.InitDB()
 	//defer config.DB.Close()
+
 	// 3. Echo Web Framework başlatılıyor
 	e := echo.New()
-	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	// USER
 	userRepo := user.NewRepository(config.DB)
@@ -58,6 +53,9 @@ func main() {
 	restaurantService := restaurant.NewService(restaurantRepo)
 	restaurant.NewHandler(e, restaurantService)
 
+	// SEARCH (Restoranları filtrelemek/arayıp getirmek için)
+	search.NewHandler(e, restaurantService)
+
 	// MENU
 	menuRepo := menu.NewRepository(config.DB)
 	menuService := menu.NewService(menuRepo)
@@ -68,7 +66,17 @@ func main() {
 	orderService := order.NewService(orderRepo)
 	order.NewHandler(e, orderService)
 
-	// PORT
+	// PRODUCT
+	productRepo := product.NewProductRepository(config.DB)
+	productService := product.NewProductService(productRepo)
+	productHandler := product.NewProductHandler(productService)
+
+	// PRODUCT endpoint tanımları
+	e.POST("/products", productHandler.CreateProduct)
+	e.PUT("/products/:id", productHandler.UpdateProduct)
+	e.DELETE("/products/:id", productHandler.DeleteProduct)
+
+	// SUNUCU BAŞLATILDI
 	log.Println("Sunucu 8080 portunda çalışıyor...")
 	e.Logger.Fatal(e.Start(":8080"))
 }
