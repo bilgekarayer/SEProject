@@ -4,6 +4,7 @@ import (
 	"SEProject/Middleware"
 	"SEProject/User/auth"
 	"SEProject/User/types"
+	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"strconv"
 	"time"
@@ -27,6 +28,7 @@ func NewHandler(e *echo.Echo, service *Service) {
 	api.PUT("/:id", h.UpdateUser)                            // PUT /user/5
 	api.DELETE("/:id", h.DeleteUser)                         // DELETE /user/5
 	api.GET("/all", h.GetAllUsers, Middleware.RequireAuth, Middleware.RequireRole("admin"))
+	api.GET("/me", h.GetCurrentUser, Middleware.RequireAuth)
 
 }
 
@@ -93,10 +95,18 @@ func (h *Handler) Login(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Şifre hatalı"})
 	}
 
-	token, err := auth.GenerateJWT(user.ID, user.Username, user.RoleName)
+	// ✅ Burada 5 argüman veriyoruz
+	token, err := auth.GenerateJWT(
+		user.ID,
+		user.Username,
+		user.RoleName,
+		user.FirstName,
+		user.LastName,
+	)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Token oluşturulamadı"})
 	}
+
 	cookie := &http.Cookie{
 		Name:     "Authorization",
 		Value:    token,
@@ -107,7 +117,6 @@ func (h *Handler) Login(c echo.Context) error {
 	}
 	c.SetCookie(cookie)
 
-	// JSON response
 	return c.JSON(http.StatusOK, echo.Map{
 		"message": "Giriş başarılı",
 	})
@@ -224,4 +233,36 @@ func (h *Handler) GetAllUsers(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Kullanıcılar alınamadı"})
 	}
 	return c.JSON(http.StatusOK, users)
+}
+
+// internal/handler.go
+// GetCurrentUser godoc
+// @Summary Get current user
+// @Description Returns the currently authenticated user's info
+// @Tags User
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Router /user/me [get]
+func (h *Handler) GetCurrentUser(c echo.Context) error {
+	// Token'ı al
+	userToken := c.Get("user").(*jwt.Token)
+	if userToken == nil {
+		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Geçerli kullanıcı bilgisi bulunamadı"})
+	}
+
+	// Claims kısmını al
+	claims := userToken.Claims.(*Middleware.Claims)
+
+	// Kullanıcı bilgilerini yanıt olarak döndür
+	response := map[string]interface{}{
+		"id":        claims.UserID,
+		"username":  claims.Username,
+		"role":      claims.Role,
+		"firstName": claims.FirstName, // Eklenen first name
+		"lastName":  claims.LastName,  // Eklenen last name
+	}
+
+	return c.JSON(http.StatusOK, response)
 }

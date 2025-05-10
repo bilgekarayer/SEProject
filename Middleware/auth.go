@@ -23,15 +23,16 @@ import (
 )
 
 type Claims struct {
-	UID   int    `json:"uid"`
-	UName string `json:"uname"`
-	Role  string `json:"role"`
+	UserID    int    `json:"uid"`
+	Username  string `json:"uname"`
+	Role      string `json:"role"`
+	FirstName string `json:"fname"`
+	LastName  string `json:"lname"`
 	jwt.RegisteredClaims
 }
 
 func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		// 1. Cookie'den JWT'yi al
 		cookie, err := c.Cookie("Authorization")
 		if err != nil {
 			return c.NoContent(http.StatusUnauthorized)
@@ -39,9 +40,7 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 
 		tokenStr := cookie.Value
 
-		// 2. Token'ı parse et ve doğrula
 		token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
-			// HMAC kontrolü
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("Beklenmeyen imzalama yöntemi: %v", t.Header["alg"])
 			}
@@ -57,22 +56,18 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 			return c.NoContent(http.StatusUnauthorized)
 		}
 
-		// 3. Expiration kontrolü
 		if claims.ExpiresAt.Time.Before(time.Now()) {
 			return c.NoContent(http.StatusUnauthorized)
 		}
 
-		// 4. Kullanıcıyı sub claim'den bul (örnek olarak sub = user ID)
-		userID := strconv.Itoa(claims.UID)
+		userID := strconv.Itoa(claims.UserID)
 		if userID == "" {
 			return c.NoContent(http.StatusUnauthorized)
 		}
-		c.Set("userID", userID)
 
-		// 5. İsteğe kullanıcıyı bağla
-		c.Set("userID", userID)
+		// Correctly set the user token to the context
+		c.Set("user", token)
 
-		// 6. Devam et
 		return next(c)
 	}
 }
@@ -98,7 +93,7 @@ func RequireRole(requiredRole string) echo.MiddlewareFunc {
 				return c.NoContent(http.StatusForbidden)
 			}
 
-			c.Set("userID", claims.UID)
+			c.Set("userID", claims.UserID)
 			c.Set("userRole", claims.Role)
 
 			return next(c)

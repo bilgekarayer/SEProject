@@ -230,6 +230,35 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the currently authenticated user's info",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/user/{id}": {
             "put": {
                 "description": "Updates the user data by ID",
@@ -340,10 +369,12 @@ const docTemplate = `{
         "types.RegisterRequest": {
             "type": "object",
             "properties": {
-                "first_name": {
+                "firstName": {
+                    "description": "⬅︎ değişti",
                     "type": "string"
                 },
-                "last_name": {
+                "lastName": {
+                    "description": "⬅︎ değişti",
                     "type": "string"
                 },
                 "password": {
@@ -382,6 +413,13 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`
