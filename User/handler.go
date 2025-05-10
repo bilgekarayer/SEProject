@@ -26,7 +26,7 @@ func NewHandler(e *echo.Echo, service *Service) {
 	api.POST("", h.CreateUser)                               // POST /user
 	api.PUT("/:id", h.UpdateUser)                            // PUT /user/5
 	api.DELETE("/:id", h.DeleteUser)                         // DELETE /user/5
-	api.GET("/all", h.GetAllUsers, Middleware.RequireAuth, Middleware.RequireRole("Admin"))
+	api.GET("/all", h.GetAllUsers, Middleware.RequireAuth, Middleware.RequireRole("admin"))
 
 }
 
