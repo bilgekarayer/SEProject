@@ -8,7 +8,9 @@ package main
 
 import (
 	"context"
+	"github.com/labstack/echo/v4/middleware"
 	"log"
+	"net/http"
 	"os"
 
 	menu "SEProject/Menu"
@@ -46,6 +48,11 @@ func main() {
 	//defer config.DB.Close()
 	// 3. Echo Web Framework başlatılıyor
 	e := echo.New()
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete},
+		AllowCredentials: true,
+	}))
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	// USER
@@ -67,6 +74,9 @@ func main() {
 	orderRepo := order.NewRepository(config.DB)
 	orderService := order.NewService(orderRepo)
 	order.NewHandler(e, orderService)
+	for _, r := range e.Routes() {
+		log.Println("Route:", r.Method, r.Path)
+	}
 
 	// PORT
 	log.Println("Sunucu 8080 portunda çalışıyor...")

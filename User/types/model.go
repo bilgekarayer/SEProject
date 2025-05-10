@@ -1,9 +1,11 @@
 package types
 
 type User struct {
-	ID       int    `bson:"_id" json:"id"`
-	Username string `bson:"username" json:"username"`
-	Password string `bson:"password" json:"password"`
+	ID        int    `bson:"_id" json:"id"`
+	Username  string `bson:"username" json:"username"`
+	Password  string `bson:"password" json:"password"`
+	FirstName string `bson:"firstName" json:"firstName"`
+	LastName  string `bson:"lastName" json:"lastName"`
 }
 
 type Order struct {
@@ -14,8 +16,10 @@ type Order struct {
 }
 
 type RegisterRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
 }
 
 type LoginRequest struct {

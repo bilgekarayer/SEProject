@@ -6,6 +6,7 @@ import (
 	"SEProject/User/types"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -20,8 +21,8 @@ func NewHandler(e *echo.Echo, service *Service) {
 	h := &Handler{service: service}
 
 	api := e.Group("/user")
-	e.POST("/register", h.Register)
-	e.POST("/login", h.Login)
+	api.POST("/register", h.Register)
+	api.POST("/login", h.Login)
 	api.GET("", h.GetUserByUsername, Middleware.RequireAuth) // /user?username=abc
 	api.POST("", h.CreateUser)                               // POST /user
 	api.PUT("/:id", h.UpdateUser)                            // PUT /user/5
@@ -53,12 +54,23 @@ func (h *Handler) Register(c echo.Context) error {
 	}
 
 	u := &types.User{
-		Username: req.Username,
-		Password: string(hashed),
+		Username:  req.Username,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Password:  string(hashed),
 	}
-
 	if err := h.service.Register(c.Request().Context(), u); err != nil {
-		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Kayıt başarısız"})
+		// UNIQUE constraint hatası kontrolü
+		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "already exists") {
+			return c.JSON(http.StatusConflict, echo.Map{
+				"error": "Bu kullanıcı adı zaten kullanılıyor",
+			})
+		}
+
+		// Diğer tüm hatalar için genel hata
+		return c.JSON(http.StatusInternalServerError, echo.Map{
+			"error": "Kayıt başarısız",
+		})
 	}
 
 	return c.JSON(http.StatusCreated, echo.Map{"message": "Kayıt başarılı"})

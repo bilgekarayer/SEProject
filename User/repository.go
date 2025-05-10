@@ -25,9 +25,9 @@ func (r *Repository) GetByUsername(ctx context.Context, username string) (*types
 }
 func (r *Repository) Create(ctx context.Context, user *types.User) error {
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO users (username,password) 
-		VALUES ($1, $2)
-	`, user.Username, user.Password)
+		INSERT INTO users (username,password,first_name,last_name) 
+		VALUES ($1, $2, $3, $4)
+	`, user.Username, user.Password, user.FirstName, user.LastName)
 
 	return err
 }
