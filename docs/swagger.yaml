@@ -11,7 +11,30 @@ definitions:
     type: object
   types.RegisterRequest:
     properties:
+      first_name:
+        type: string
+      last_name:
+        type: string
       password:
+        type: string
+      username:
+        type: string
+    type: object
+  types.User:
+    properties:
+      created_at:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: integer
+      last_name:
+        type: string
+      password:
+        type: string
+      role_id:
+        type: integer
+      role_name:
         type: string
       username:
         type: string
@@ -81,6 +104,148 @@ paths:
               type: string
             type: object
       summary: Register a new user
+      tags:
+      - User
+  /user:
+    get:
+      description: Get a user by providing their username
+      parameters:
+      - description: Username to search
+        in: query
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.User'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get user by username
+      tags:
+      - User
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user in the system
+      parameters:
+      - description: User object
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/types.User'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User created
+          schema:
+            type: string
+        "400":
+          description: Invalid input
+          schema:
+            type: string
+        "500":
+          description: Failed to create user
+          schema:
+            type: string
+      summary: Create a new user
+      tags:
+      - User
+  /user/{id}:
+    delete:
+      description: Deletes a user by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User deleted
+          schema:
+            type: string
+        "400":
+          description: Invalid id
+          schema:
+            type: string
+        "500":
+          description: Failed to delete user
+          schema:
+            type: string
+      summary: Delete user
+      tags:
+      - User
+    put:
+      consumes:
+      - application/json
+      description: Updates the user data by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: User data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/types.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User updated
+          schema:
+            type: string
+        "400":
+          description: Invalid id or input
+          schema:
+            type: string
+        "500":
+          description: Failed to update user
+          schema:
+            type: string
+      summary: Update user
+      tags:
+      - User
+  /user/all:
+    get:
+      description: Returns all users
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.User'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all users
       tags:
       - User
 swagger: "2.0"

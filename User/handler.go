@@ -26,6 +26,7 @@ func NewHandler(e *echo.Echo, service *Service) {
 	api.POST("", h.CreateUser)                               // POST /user
 	api.PUT("/:id", h.UpdateUser)                            // PUT /user/5
 	api.DELETE("/:id", h.DeleteUser)                         // DELETE /user/5
+	api.GET("/all", h.GetAllUsers, Middleware.RequireAuth, Middleware.RequireRole("Admin"))
 
 }
 
@@ -53,8 +54,11 @@ func (h *Handler) Register(c echo.Context) error {
 	}
 
 	u := &types.User{
-		Username: req.Username,
-		Password: string(hashed),
+		Username:  req.Username,
+		Password:  string(hashed),
+		FirstName: req.FirstName, // ⬅️ eklendi
+		LastName:  req.LastName,  // ⬅️ eklendi
+		RoleID:    1,
 	}
 
 	if err := h.service.Register(c.Request().Context(), u); err != nil {
@@ -89,7 +93,7 @@ func (h *Handler) Login(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Şifre hatalı"})
 	}
 
-	token, err := auth.GenerateJWT(user.ID, user.Username)
+	token, err := auth.GenerateJWT(user.ID, user.Username, user.RoleName)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Token oluşturulamadı"})
 	}
@@ -109,6 +113,15 @@ func (h *Handler) Login(c echo.Context) error {
 	})
 }
 
+// @Summary Get user by username
+// @Description Get a user by providing their username
+// @Tags User
+// @Produce json
+// @Param username query string true "Username to search"
+// @Success 200 {object} types.User
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /user [get]
 func (h *Handler) GetUserByUsername(c echo.Context) error {
 	username := c.QueryParam("username")
 	if username == "" {
@@ -122,6 +135,16 @@ func (h *Handler) GetUserByUsername(c echo.Context) error {
 	return c.JSON(http.StatusOK, user)
 }
 
+// @Summary Create a new user
+// @Description Creates a new user in the system
+// @Tags User
+// @Accept json
+// @Produce json
+// @Param user body types.User true "User object"
+// @Success 201 {string} string "User created"
+// @Failure 400 {string} string "Invalid input"
+// @Failure 500 {string} string "Failed to create user"
+// @Router /user [post]
 func (h *Handler) CreateUser(c echo.Context) error {
 	var user types.User
 	if err := c.Bind(&user); err != nil {
@@ -135,6 +158,17 @@ func (h *Handler) CreateUser(c echo.Context) error {
 	return c.String(http.StatusCreated, "User created")
 }
 
+// @Summary Update user
+// @Description Updates the user data by ID
+// @Tags User
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID"
+// @Param user body types.User true "User data"
+// @Success 200 {string} string "User updated"
+// @Failure 400 {string} string "Invalid id or input"
+// @Failure 500 {string} string "Failed to update user"
+// @Router /user/{id} [put]
 func (h *Handler) UpdateUser(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -154,6 +188,15 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 	return c.String(http.StatusOK, "User updated")
 }
 
+// @Summary Delete user
+// @Description Deletes a user by ID
+// @Tags User
+// @Produce json
+// @Param id path int true "User ID"
+// @Success 200 {string} string "User deleted"
+// @Failure 400 {string} string "Invalid id"
+// @Failure 500 {string} string "Failed to delete user"
+// @Router /user/{id} [delete]
 func (h *Handler) DeleteUser(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -166,4 +209,19 @@ func (h *Handler) DeleteUser(c echo.Context) error {
 	}
 
 	return c.String(http.StatusOK, "User deleted")
+}
+
+// @Summary Get all users
+// @Description Returns all users
+// @Tags User
+// @Produce json
+// @Success 200 {array} types.User
+// @Failure 500 {object} map[string]string
+// @Router /user/all [get]
+func (h *Handler) GetAllUsers(c echo.Context) error {
+	users, err := h.service.GetAllUsers(c.Request().Context())
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Kullanıcılar alınamadı"})
+	}
+	return c.JSON(http.StatusOK, users)
 }
