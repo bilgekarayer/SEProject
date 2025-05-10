@@ -11,9 +11,11 @@ definitions:
     type: object
   types.RegisterRequest:
     properties:
-      first_name:
+      firstName:
+        description: ⬅︎ değişti
         type: string
-      last_name:
+      lastName:
+        description: ⬅︎ değişti
         type: string
       password:
         type: string
@@ -248,4 +250,27 @@ paths:
       summary: Get all users
       tags:
       - User
+  /user/me:
+    get:
+      consumes:
+      - application/json
+      description: Returns the currently authenticated user's info
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - User
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

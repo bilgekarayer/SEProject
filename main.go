@@ -26,6 +26,10 @@ import (
 	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
+// @SecurityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+
 func main() {
 	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
 		conn, err := pgx.Connect(context.Background(), databaseURL)
@@ -50,12 +54,12 @@ func main() {
 	e := echo.New()
 
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:3001"},
 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete},
 		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
 		AllowCredentials: true, // Cookie/JWT için gerekli
 	}))
-	
+
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	// USER
