@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 
+	cart "SEProject/Cart"
 	menu "SEProject/Menu"
 	order "SEProject/Order"
 	restaurant "SEProject/Restaurant"
@@ -57,7 +58,7 @@ func main() {
 		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:3001"},
 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete},
 		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
-		AllowCredentials: true, // Cookie/JWT için gerekli
+		AllowCredentials: true,
 	}))
 
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
@@ -81,6 +82,11 @@ func main() {
 	orderRepo := order.NewRepository(config.DB)
 	orderService := order.NewService(orderRepo)
 	order.NewHandler(e, orderService)
+
+	//CART
+	cartRepo := cart.NewRepository(config.DB)
+	cartService := cart.NewService(cartRepo)
+	cart.NewHandler(e, cartService)
 
 	// PORT
 	log.Println("Sunucu 8080 portunda çalışıyor...")

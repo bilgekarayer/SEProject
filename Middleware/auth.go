@@ -65,8 +65,8 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 			return c.NoContent(http.StatusUnauthorized)
 		}
 
-		// Correctly set the user token to the context
 		c.Set("user", token)
+		c.Set("userID", claims.UserID)
 
 		return next(c)
 	}
