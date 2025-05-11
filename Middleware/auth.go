@@ -65,15 +65,17 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		// 4. Kullanıcıyı sub claim'den bul (örnek olarak sub = user ID)
-		userID := strconv.Itoa(claims.UID)
+		userID := strconv.Itoa(claims.UserID)
 		if userID == "" {
 			return c.NoContent(http.StatusUnauthorized)
 		}
-		c.Set("userID", userID)
+		// Correctly set the user token to the context
+		c.Set("user", token)
 
-		// 5. İsteğe kullanıcıyı bağla
-		c.Set("userID", userID)
-
+		// 6. Devam et
+		return next(c)
+	}
+}
 
 func RequireRole(requiredRole string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -91,19 +93,12 @@ func RequireRole(requiredRole string) echo.MiddlewareFunc {
 				return c.NoContent(http.StatusUnauthorized)
 			}
 
-			claims, ok := token.Claims.(*Claims)
-			if !ok {
-				return c.NoContent(http.StatusUnauthorized)
-			}
-
-			fmt.Println("🛡 Gelen rol:", claims.Role, "| Beklenen rol:", requiredRole)
-
-			if strings.ToLower(claims.Role) != strings.ToLower(requiredRole) {
-				fmt.Println("⛔ ROL ENGELLENDİ")
+			claims := token.Claims.(*Claims)
+			if claims.Role != requiredRole {
 				return c.NoContent(http.StatusForbidden)
 			}
 
-			c.Set("userID", claims.UID)
+			c.Set("userID", claims.UserID)
 			c.Set("userRole", claims.Role)
 
 			return next(c)
