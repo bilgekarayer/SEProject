@@ -20,26 +20,15 @@ func NewHandler(e *echo.Echo, service *Service) {
 	h := &Handler{service: service}
 
 	api := e.Group("/user")
-	e.POST("/register", h.Register)
-	e.POST("/login", h.Login)
-	api.GET("", h.GetUserByUsername, Middleware.RequireAuth) // /user?username=abc
-	api.POST("", h.CreateUser)                               // POST /user
-	api.PUT("/:id", h.UpdateUser)                            // PUT /user/5
-	api.DELETE("/:id", h.DeleteUser)                         // DELETE /user/5
-
+	api.POST("/register", h.Register)
+	api.POST("/login", h.Login)
+	api.GET("", h.GetUserByUsername, Middleware.RequireAuth)
+	api.POST("", h.CreateUser)
+	api.PUT("/:id", h.UpdateUser)
+	api.DELETE("/:id", h.DeleteUser)
+	api.GET("/all", h.GetAllUsers, Middleware.RequireAuth, Middleware.RequireRole("Admin"))
 }
 
-// internal/handler.go
-// Register godoc
-// @Summary Register a new user
-// @Description Creates a new user with hashed password
-// @Tags User
-// @Accept json
-// @Produce json
-// @Param user body types.RegisterRequest true "User credentials"
-// @Success 201 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Router /register [post]
 func (h *Handler) Register(c echo.Context) error {
 	var req types.RegisterRequest
 
@@ -53,8 +42,11 @@ func (h *Handler) Register(c echo.Context) error {
 	}
 
 	u := &types.User{
-		Username: req.Username,
-		Password: string(hashed),
+		Username:  req.Username,
+		Password:  string(hashed),
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		RoleID:    1, // default user
 	}
 
 	if err := h.service.Register(c.Request().Context(), u); err != nil {
@@ -64,16 +56,8 @@ func (h *Handler) Register(c echo.Context) error {
 	return c.JSON(http.StatusCreated, echo.Map{"message": "Kayıt başarılı"})
 }
 
-// @Summary Login user
-// @Description Authenticates user and returns JWT
-// @Tags User
-// @Accept json
-// @Produce json
-// @Param user body types.LoginRequest true "Login credentials"
-// @Success 200 {object} map[string]string
-// @Failure 401 {object} map[string]string
-// @Router /login [post]
 func (h *Handler) Login(c echo.Context) error {
+
 	var req types.LoginRequest
 
 	if err := c.Bind(&req); err != nil {
@@ -82,17 +66,21 @@ func (h *Handler) Login(c echo.Context) error {
 
 	user, err := h.service.GetUserByUsername(c.Request().Context(), req.Username, "")
 	if err != nil {
-		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Kullanıcı bulunamadı"})
+		return c.JSON(http.StatusUnauthorized, echo.Map{
+			"error": "Kullanıcı bulunamadı",
+			"debug": err.Error(),
+		})
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Şifre hatalı"})
 	}
 
-	token, err := auth.GenerateJWT(user.ID, user.Username)
+	token, err := auth.GenerateJWT(user.ID, user.Username, user.RoleName)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Token oluşturulamadı"})
 	}
+
 	cookie := &http.Cookie{
 		Name:     "Authorization",
 		Value:    token,
@@ -103,7 +91,6 @@ func (h *Handler) Login(c echo.Context) error {
 	}
 	c.SetCookie(cookie)
 
-	// JSON response
 	return c.JSON(http.StatusOK, echo.Map{
 		"message": "Giriş başarılı",
 	})
@@ -166,4 +153,12 @@ func (h *Handler) DeleteUser(c echo.Context) error {
 	}
 
 	return c.String(http.StatusOK, "User deleted")
+}
+
+func (h *Handler) GetAllUsers(c echo.Context) error {
+	users, err := h.service.GetAllUsers(c.Request().Context())
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Kullanıcılar alınamadı"})
+	}
+	return c.JSON(http.StatusOK, users)
 }

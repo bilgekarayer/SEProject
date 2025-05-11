@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -25,6 +26,7 @@ import (
 type Claims struct {
 	UID   int    `json:"uid"`
 	UName string `json:"uname"`
+	Role  string `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -73,5 +75,41 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 
 		// 6. Devam et
 		return next(c)
+	}
+}
+
+func RequireRole(requiredRole string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			cookie, err := c.Cookie("Authorization")
+			if err != nil {
+				return c.NoContent(http.StatusUnauthorized)
+			}
+
+			tokenStr := cookie.Value
+			token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+				return []byte(os.Getenv("JWT_SECRET")), nil
+			})
+			if err != nil || !token.Valid {
+				return c.NoContent(http.StatusUnauthorized)
+			}
+
+			claims, ok := token.Claims.(*Claims)
+			if !ok {
+				return c.NoContent(http.StatusUnauthorized)
+			}
+
+			fmt.Println("🛡 Gelen rol:", claims.Role, "| Beklenen rol:", requiredRole)
+
+			if strings.ToLower(claims.Role) != strings.ToLower(requiredRole) {
+				fmt.Println("⛔ ROL ENGELLENDİ")
+				return c.NoContent(http.StatusForbidden)
+			}
+
+			c.Set("userID", claims.UID)
+			c.Set("userRole", claims.Role)
+
+			return next(c)
+		}
 	}
 }

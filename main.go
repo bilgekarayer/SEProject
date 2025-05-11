@@ -1,27 +1,27 @@
-// @title SEProject API
-// @version 1.0
-// @description RESTful API for restaurant ordering system
-// @host localhost:8080
-// @BasePath /
-
 package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	echoSwagger "github.com/swaggo/echo-swagger"
+
+	delivery "SEProject/Delivery"
 	menu "SEProject/Menu"
+	customMiddleware "SEProject/Middleware"
 	order "SEProject/Order"
 	restaurant "SEProject/Restaurant"
 	user "SEProject/User"
 	"SEProject/config"
 
 	_ "SEProject/docs"
-	"github.com/jackc/pgx/v5"
-	"github.com/labstack/echo/v4"
 	_ "github.com/lib/pq"
-	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
 func main() {
@@ -41,11 +41,22 @@ func main() {
 		log.Println("Warning: DATABASE_URL not set, skipping pgx connection test")
 	}
 
-	// 2. Klasik InitDB bağlantısı (lib/pq)
 	config.InitDB()
-	//defer config.DB.Close()
-	// 3. Echo Web Framework başlatılıyor
 	e := echo.New()
+
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		AllowCredentials: true,
+	}))
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			fmt.Println("🌐 Yeni istek:", c.Request().Method, c.Request().URL.Path)
+			return next(c)
+		}
+	})
+
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	// USER
@@ -68,7 +79,17 @@ func main() {
 	orderService := order.NewService(orderRepo)
 	order.NewHandler(e, orderService)
 
-	// PORT
+	// DELIVERY (YENİ EKLENDİ)
+	deliveryRepo := delivery.NewRepository(config.DB)
+	deliveryService := delivery.NewService(deliveryRepo)
+
+	// /delivery/... yolları sadece auth'lu ve delivery_person rolü olanlara açık
+	deliveryGroup := e.Group("/delivery",
+		customMiddleware.RequireAuth,
+		customMiddleware.RequireRole("delivery_person"),
+	)
+	delivery.NewHandler(deliveryGroup, deliveryService)
+
 	log.Println("Sunucu 8080 portunda çalışıyor...")
 	e.Logger.Fatal(e.Start(":8080"))
 }
