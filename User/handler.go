@@ -58,9 +58,9 @@ func (h *Handler) Register(c echo.Context) error {
 	u := &types.User{
 		Username:  req.Username,
 		Password:  string(hashed),
-		FirstName: req.FirstName, // ⬅️ eklendi
-		LastName:  req.LastName,  // ⬅️ eklendi
-		RoleID:    1,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		RoleID:    1, // default user
 	}
 
 	if err := h.service.Register(c.Request().Context(), u); err != nil {
@@ -88,7 +88,10 @@ func (h *Handler) Login(c echo.Context) error {
 
 	user, err := h.service.GetUserByUsername(c.Request().Context(), req.Username, "")
 	if err != nil {
-		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Kullanıcı bulunamadı"})
+		return c.JSON(http.StatusUnauthorized, echo.Map{
+			"error": "Kullanıcı bulunamadı",
+			"debug": err.Error(),
+		})
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
@@ -106,7 +109,6 @@ func (h *Handler) Login(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Token oluşturulamadı"})
 	}
-
 	cookie := &http.Cookie{
 		Name:     "Authorization",
 		Value:    token,
@@ -117,6 +119,7 @@ func (h *Handler) Login(c echo.Context) error {
 	}
 	c.SetCookie(cookie)
 
+	// JSON response
 	return c.JSON(http.StatusOK, echo.Map{
 		"message": "Giriş başarılı",
 	})

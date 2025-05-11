@@ -40,10 +40,8 @@ func (r *Repository) GetByUsername(ctx context.Context, username string) (*types
 	); err != nil {
 		return nil, err
 	}
-
 	return &u, nil
 }
-
 func (r *Repository) Create(ctx context.Context, user *types.User) error {
 	_, err := r.db.ExecContext(ctx, `
   INSERT INTO users (username, password, role_id, first_name, last_name)
