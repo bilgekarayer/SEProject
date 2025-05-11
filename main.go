@@ -21,6 +21,7 @@ import (
 	customMiddleware "SEProject/Middleware"
 	order "SEProject/Order"
 	restaurant "SEProject/Restaurant"
+	search "SEProject/Search"
 	user "SEProject/User"
 	"SEProject/config"
 
@@ -84,6 +85,8 @@ func main() {
 	orderRepo := order.NewRepository(config.DB)
 	orderService := order.NewService(orderRepo)
 	order.NewHandler(e, orderService)
+	// SEARCH
+	search.NewHandler(e, restaurantService)
 
 	// DELIVERY (YENİ EKLENDİ)
 	deliveryRepo := delivery.NewRepository(config.DB)

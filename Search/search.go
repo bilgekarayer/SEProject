@@ -34,3 +34,22 @@ func FilterByLocation(restaurants []types.Restaurant, location string) []types.R
 	}
 	return result
 }
+func FilterByPrice(restaurants []types.Restaurant, maxPrice int) []types.Restaurant {
+	var result []types.Restaurant
+	for _, r := range restaurants {
+		if r.AvgPrice <= maxPrice {
+			result = append(result, r)
+		}
+	}
+	return result
+}
+
+func FilterByRating(restaurants []types.Restaurant, minRating float64) []types.Restaurant {
+	var result []types.Restaurant
+	for _, r := range restaurants {
+		if r.Rating >= minRating {
+			result = append(result, r)
+		}
+	}
+	return result
+}

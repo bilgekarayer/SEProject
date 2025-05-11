@@ -3,7 +3,9 @@ package Search
 import (
 	"SEProject/Restaurant"
 	"github.com/labstack/echo/v4"
+	"log"
 	"net/http"
+	"strconv"
 )
 
 type Handler struct {
@@ -17,9 +19,9 @@ func NewHandler(e *echo.Echo, service *Restaurant.Service) {
 
 func (h *Handler) SearchRestaurants(c echo.Context) error {
 	ctx := c.Request().Context()
-
 	all, err := h.service.GetAllRestaurants(ctx)
 	if err != nil {
+		log.Println("GetAllRestaurants error:", err) // 🛠️ Konsola bas
 		return c.String(http.StatusInternalServerError, "Restoranlar getirilemedi")
 	}
 
@@ -36,6 +38,17 @@ func (h *Handler) SearchRestaurants(c echo.Context) error {
 	}
 	if location != "" {
 		result = FilterByLocation(result, location) // ✅ eklendi
+	}
+	price := c.QueryParam("price")   // örn. "100"
+	rating := c.QueryParam("rating") // örn. "4.5"
+
+	if price != "" {
+		maxPrice, _ := strconv.Atoi(price)
+		result = FilterByPrice(result, maxPrice)
+	}
+	if rating != "" {
+		minRating, _ := strconv.ParseFloat(rating, 64)
+		result = FilterByRating(result, minRating)
 	}
 
 	return c.JSON(http.StatusOK, result)
