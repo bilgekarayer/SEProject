@@ -171,30 +171,41 @@ func (h *Handler) CreateUser(c echo.Context) error {
 }
 
 // @Summary Update user
-// @Description Updates the user data by ID
+// @Description Updates mutable user fields (username, password, first_name, last_name, role_id)
 // @Tags User
 // @Accept json
 // @Produce json
-// @Param id path int true "User ID"
-// @Param user body types.User true "User data"
+// @Param id   path int                    true  "User ID"
+// @Param body body types.UpdateUserRequest true "Updatable fields"
 // @Success 200 {string} string "User updated"
 // @Failure 400 {string} string "Invalid id or input"
 // @Failure 500 {string} string "Failed to update user"
 // @Router /user/{id} [put]
 func (h *Handler) UpdateUser(c echo.Context) error {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		return c.String(http.StatusBadRequest, "Invalid id")
 	}
 
-	var user types.User
-	if err := c.Bind(&user); err != nil {
+	var req types.UpdateUserRequest
+	if err := c.Bind(&req); err != nil {
 		return c.String(http.StatusBadRequest, "Invalid input")
 	}
 
-	if err := h.service.UpdateUser(c.Request().Context(), id, &user); err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to update user")
+	// password boşsa şifreyi koru
+	if req.Password == "" {
+		if err := h.service.UpdateUserPartial(c.Request().Context(), id, &req); err != nil {
+			return c.String(http.StatusInternalServerError, "Failed to update user")
+		}
+	} else { // yeni şifre hash’le
+		hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return c.String(http.StatusInternalServerError, "Password hash error")
+		}
+		req.Password = string(hashed)
+		if err := h.service.UpdateUserPartial(c.Request().Context(), id, &req); err != nil {
+			return c.String(http.StatusInternalServerError, "Failed to update user")
+		}
 	}
 
 	return c.String(http.StatusOK, "User updated")

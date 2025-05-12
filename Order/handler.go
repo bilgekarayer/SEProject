@@ -1,99 +1,176 @@
 package Order
 
 import (
+	"SEProject/Middleware"
 	"SEProject/Order/types"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
-	"log"
 	"net/http"
 	"strconv"
 )
 
 type Handler struct {
-	service *Service
+	s *Service
 }
 
-func NewHandler(e *echo.Echo, service *Service) {
-	h := &Handler{service: service}
+func NewHandler(e *echo.Echo, s *Service) {
+	h := &Handler{s}
 
-	e.POST("/cart/add", h.AddToCart)
-	e.GET("/cart", h.GetCart)
-	e.POST("/order/place", h.PlaceOrder)
-	e.GET("/restaurant/orders", h.GetOrdersByRestaurantID)
-	e.PUT("/restaurant/orders/:id/prepare", h.MarkOrderPrepared)
-	e.PUT("/restaurant/orders/:id/send", h.MarkOrderSent)
+	auth := e.Group("", Middleware.RequireAuth)
+
+	auth.POST("/cart/add", h.AddToCart)
+	auth.GET("/cart", h.GetCart)
+	auth.POST("/order/place", h.PlaceOrder)
+	auth.GET("/user/orders", h.MyOrders)
+
+	auth.GET("/restaurant/orders", h.RestaurantOrders)
+	auth.PUT("/restaurant/orders/:id/prepare", h.MarkPrepared)
+	auth.PUT("/restaurant/orders/:id/send", h.MarkSent)
 }
 
+func uid(c echo.Context) int {
+	t := c.Get("user").(*jwt.Token)
+	return t.Claims.(*Middleware.Claims).UserID
+}
+
+// AddToCart godoc
+// @Summary      Add item to cart
+// @Tags         Cart
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        item  body      types.CartItem  true  "Cart item payload"
+// @Success      201   {string}  string          "ok"
+// @Failure      400   {string}  string          "bad"
+// @Failure      500   {string}  string          "fail"
+// @Router       /cart/add [post]
 func (h *Handler) AddToCart(c echo.Context) error {
-	var item types.CartItem
-	if err := c.Bind(&item); err != nil {
-		return c.String(http.StatusBadRequest, "Invalid input")
+	var it types.CartItem
+	if err := c.Bind(&it); err != nil {
+		return c.String(http.StatusBadRequest, "bad")
 	}
-	if err := h.service.AddToCart(c.Request().Context(), &item); err != nil {
-		log.Println("AddToCart ERROR:", err)
-		return c.String(http.StatusInternalServerError, "Failed to add to cart")
+	it.UserID = uid(c)
+	if err := h.s.AddToCart(c.Request().Context(), &it); err != nil {
+		return c.String(http.StatusInternalServerError, "fail")
 	}
-	return c.String(http.StatusCreated, "Added to cart")
+	return c.String(http.StatusCreated, "ok")
 }
 
+// GetCart godoc
+// @Summary      Get current user's cart
+// @Tags         Cart
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {array}   types.CartItem
+// @Failure      500  {string}  string  "fail"
+// @Router       /cart [get]
 func (h *Handler) GetCart(c echo.Context) error {
-	uidStr := c.QueryParam("user_id")
-	uid, err := strconv.Atoi(uidStr)
+	items, err := h.s.GetCart(c.Request().Context(), uid(c))
 	if err != nil {
-		return c.String(http.StatusBadRequest, "Invalid user_id")
+		return c.String(http.StatusInternalServerError, "fail")
 	}
-	cart, err := h.service.GetCart(c.Request().Context(), uid)
-	if err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to fetch cart")
-	}
-	return c.JSON(http.StatusOK, cart)
+	return c.JSON(http.StatusOK, items)
 }
 
+// PlaceOrder godoc
+// @Summary      Place a new order
+// @Tags         Order
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        order  body      types.PlaceOrderRequest  true  "Order payload"
+// @Success      201    {string}  string  "ok"
+// @Failure      400    {string}  string  "bad"
+// @Failure      500    {string}  string  "fail"
+// @Router       /order/place [post]
 func (h *Handler) PlaceOrder(c echo.Context) error {
 	var req types.PlaceOrderRequest
 	if err := c.Bind(&req); err != nil {
-		return c.String(http.StatusBadRequest, "Invalid input")
+		return c.String(http.StatusBadRequest, "bad")
 	}
-	if err := h.service.PlaceOrder(c.Request().Context(), &req); err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to place order")
+	if err := h.s.PlaceOrder(c.Request().Context(), uid(c), &req); err != nil {
+		return c.String(http.StatusInternalServerError, "fail")
 	}
-	return c.String(http.StatusCreated, "Order placed")
+	return c.String(http.StatusCreated, "ok")
 }
 
-func (h *Handler) GetOrdersByRestaurantID(c echo.Context) error {
+// MyOrders godoc
+// @Summary      List current user's orders
+// @Tags         Order
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {array}   types.OrderResponse
+// @Failure      500  {string}  string  "fail"
+// @Router       /user/orders [get]
+func (h *Handler) MyOrders(c echo.Context) error {
+	res, err := h.s.GetOrdersByUser(c.Request().Context(), uid(c))
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "fail")
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// RestaurantOrders godoc
+// @Summary      List orders for a restaurant
+// @Tags         Order
+// @Security     BearerAuth
+// @Produce      json
+// @Param        restaurant_id  query     int  true  "Restaurant ID"
+// @Success      200            {array}   types.OrderResponse
+// @Failure      400            {string}  string  "bad"
+// @Failure      500            {string}  string  "fail"
+// @Router       /restaurant/orders [get]
+func (h *Handler) RestaurantOrders(c echo.Context) error {
 	ridStr := c.QueryParam("restaurant_id")
 	rid, err := strconv.Atoi(ridStr)
 	if err != nil {
-		return c.String(http.StatusBadRequest, "Invalid restaurant_id")
+		return c.String(http.StatusBadRequest, "bad")
 	}
-	orders, err := h.service.GetOrdersByRestaurantID(c.Request().Context(), rid)
+	res, err := h.s.GetOrdersByRestaurant(c.Request().Context(), rid)
 	if err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to fetch orders")
+		return c.String(http.StatusInternalServerError, "fail")
 	}
-	return c.JSON(http.StatusOK, orders)
+	return c.JSON(http.StatusOK, res)
 }
 
-func (h *Handler) MarkOrderPrepared(c echo.Context) error {
-	oidStr := c.Param("id")
-	oid, err := strconv.Atoi(oidStr)
+// MarkPrepared godoc
+// @Summary      Mark order as prepared
+// @Tags         Order
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id   path      int  true  "Order ID"
+// @Success      200  {string}  string  "ok"
+// @Failure      400  {string}  string  "bad"
+// @Failure      500  {string}  string  "fail"
+// @Router       /restaurant/orders/{id}/prepare [put]
+func (h *Handler) MarkPrepared(c echo.Context) error {
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		return c.String(http.StatusBadRequest, "Invalid order ID")
+		return c.String(http.StatusBadRequest, "bad")
 	}
-	err = h.service.UpdateOrderStatus(c.Request().Context(), oid, "prepared")
-	if err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to mark prepared")
+	if err = h.s.UpdateOrderStatus(c.Request().Context(), id, "prepared"); err != nil {
+		return c.String(http.StatusInternalServerError, "fail")
 	}
-	return c.String(http.StatusOK, "Order marked as prepared")
+	return c.String(http.StatusOK, "ok")
 }
 
-func (h *Handler) MarkOrderSent(c echo.Context) error {
-	oidStr := c.Param("id")
-	oid, err := strconv.Atoi(oidStr)
+// MarkSent godoc
+// @Summary      Mark order as sent
+// @Tags         Order
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id   path      int  true  "Order ID"
+// @Success      200  {string}  string  "ok"
+// @Failure      400  {string}  string  "bad"
+// @Failure      500  {string}  string  "fail"
+// @Router       /restaurant/orders/{id}/send [put]
+func (h *Handler) MarkSent(c echo.Context) error {
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		return c.String(http.StatusBadRequest, "Invalid order ID")
+		return c.String(http.StatusBadRequest, "bad")
 	}
-	err = h.service.UpdateOrderStatus(c.Request().Context(), oid, "sent")
-	if err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to mark sent")
+	if err = h.s.UpdateOrderStatus(c.Request().Context(), id, "sent"); err != nil {
+		return c.String(http.StatusInternalServerError, "fail")
 	}
-	return c.String(http.StatusOK, "Order marked as sent")
+	return c.String(http.StatusOK, "ok")
 }
