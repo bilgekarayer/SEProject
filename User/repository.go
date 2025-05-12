@@ -51,25 +51,23 @@ func (r *Repository) Create(ctx context.Context, user *types.User) error {
 	return err
 }
 
-func (r *Repository) Update(ctx context.Context, id int, user *types.User) error {
+func (r *Repository) UpdateAllowed(ctx context.Context, id int, u *types.UpdateUserRequest) error {
 	res, err := r.db.ExecContext(ctx, `
-		UPDATE users 
-		SET username = $1, password = $2, first_name = $3, last_name = $4, role_id = $5
-		WHERE id = $6
-	`, user.Username, user.Password, user.FirstName, user.LastName, user.RoleID, id)
-
+	  UPDATE users 
+	    SET username   = $1,
+	        password   = COALESCE(NULLIF($2,''), password),
+	        first_name = $3,
+	        last_name  = $4,
+	        role_id    = $5
+	  WHERE id = $6
+	`, u.Username, u.Password, u.FirstName, u.LastName, u.RoleID, id)
 	if err != nil {
 		return err
 	}
 
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
+	if rows, _ := res.RowsAffected(); rows == 0 {
 		return errors.New("kullanıcı bulunamadı")
 	}
-
 	return nil
 }
 
@@ -94,7 +92,14 @@ func (r *Repository) Delete(ctx context.Context, id int) error {
 }
 
 func (r *Repository) GetAllUsers(ctx context.Context) ([]*types.User, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, username, password, first_name, last_name, created_at FROM users`)
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT 
+			u.id, u.username, u.password,
+			u.first_name, u.last_name, u.created_at,
+			r.id, r.name
+		FROM users u
+		JOIN roles r ON u.role_id = r.id
+	`)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +108,16 @@ func (r *Repository) GetAllUsers(ctx context.Context) ([]*types.User, error) {
 	var users []*types.User
 	for rows.Next() {
 		var u types.User
-		if err := rows.Scan(&u.ID, &u.Username, &u.Password, &u.FirstName, &u.LastName, &u.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&u.ID,
+			&u.Username,
+			&u.Password,
+			&u.FirstName,
+			&u.LastName,
+			&u.CreatedAt,
+			&u.RoleID,
+			&u.RoleName,
+		); err != nil {
 			return nil, err
 		}
 		users = append(users, &u)

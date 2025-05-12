@@ -1,5 +1,21 @@
 basePath: /
 definitions:
+  types.CartItem:
+    properties:
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+      user_id:
+        type: integer
+    type: object
+  types.ItemResponse:
+    properties:
+      name:
+        type: string
+      quantity:
+        type: integer
+    type: object
   types.LoginRequest:
     properties:
       password:
@@ -8,6 +24,43 @@ definitions:
       username:
         example: john_doe
         type: string
+    type: object
+  types.OrderItem:
+    properties:
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+    type: object
+  types.OrderResponse:
+    properties:
+      address:
+        type: string
+      id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/types.ItemResponse'
+        type: array
+      restaurant:
+        type: string
+      status:
+        type: string
+      total:
+        type: string
+      user:
+        type: string
+    type: object
+  types.PlaceOrderRequest:
+    properties:
+      address:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/types.OrderItem'
+        type: array
+      restaurant_id:
+        type: integer
     type: object
   types.RegisterRequest:
     properties:
@@ -22,6 +75,19 @@ definitions:
       username:
         type: string
     type: object
+  types.UpdateUserRequest:
+    properties:
+      first_name:
+        type: string
+      last_name:
+        type: string
+      password:
+        type: string
+      role_id:
+        type: integer
+      username:
+        type: string
+    type: object
   types.User:
     properties:
       created_at:
@@ -31,8 +97,6 @@ definitions:
       id:
         type: integer
       last_name:
-        type: string
-      password:
         type: string
       role_id:
         type: integer
@@ -48,6 +112,57 @@ info:
   title: SEProject API
   version: "1.0"
 paths:
+  /cart:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.CartItem'
+            type: array
+        "500":
+          description: fail
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get current user's cart
+      tags:
+      - Cart
+  /cart/add:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Cart item payload
+        in: body
+        name: item
+        required: true
+        schema:
+          $ref: '#/definitions/types.CartItem'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: ok
+          schema:
+            type: string
+        "400":
+          description: bad
+          schema:
+            type: string
+        "500":
+          description: fail
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Add item to cart
+      tags:
+      - Cart
   /login:
     post:
       consumes:
@@ -78,6 +193,37 @@ paths:
       summary: Login user
       tags:
       - User
+  /order/place:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Order payload
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/types.PlaceOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: ok
+          schema:
+            type: string
+        "400":
+          description: bad
+          schema:
+            type: string
+        "500":
+          description: fail
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Place a new order
+      tags:
+      - Order
   /register:
     post:
       consumes:
@@ -108,6 +254,92 @@ paths:
       summary: Register a new user
       tags:
       - User
+  /restaurant/orders:
+    get:
+      parameters:
+      - description: Restaurant ID
+        in: query
+        name: restaurant_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.OrderResponse'
+            type: array
+        "400":
+          description: bad
+          schema:
+            type: string
+        "500":
+          description: fail
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: List orders for a restaurant
+      tags:
+      - Order
+  /restaurant/orders/{id}/prepare:
+    put:
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+        "400":
+          description: bad
+          schema:
+            type: string
+        "500":
+          description: fail
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Mark order as prepared
+      tags:
+      - Order
+  /restaurant/orders/{id}/send:
+    put:
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+        "400":
+          description: bad
+          schema:
+            type: string
+        "500":
+          description: fail
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Mark order as sent
+      tags:
+      - Order
   /user:
     get:
       description: Get a user by providing their username
@@ -198,19 +430,20 @@ paths:
     put:
       consumes:
       - application/json
-      description: Updates the user data by ID
+      description: Updates mutable user fields (username, password, first_name, last_name,
+        role_id)
       parameters:
       - description: User ID
         in: path
         name: id
         required: true
         type: integer
-      - description: User data
+      - description: Updatable fields
         in: body
-        name: user
+        name: body
         required: true
         schema:
-          $ref: '#/definitions/types.User'
+          $ref: '#/definitions/types.UpdateUserRequest'
       produces:
       - application/json
       responses:
@@ -268,6 +501,26 @@ paths:
       summary: Get current user
       tags:
       - User
+  /user/orders:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.OrderResponse'
+            type: array
+        "500":
+          description: fail
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: List current user's orders
+      tags:
+      - Order
 securityDefinitions:
   BearerAuth:
     in: header

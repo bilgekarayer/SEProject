@@ -9,26 +9,30 @@ type Service struct {
 	repo *Repository
 }
 
-func NewService(repo *Repository) *Service {
-	return &Service{repo: repo}
+func NewService(r *Repository) *Service {
+	return &Service{r}
 }
 
-func (s *Service) AddToCart(ctx context.Context, item *types.CartItem) error {
-	return s.repo.AddToCart(ctx, item)
+func (s *Service) AddToCart(ctx context.Context, it *types.CartItem) error {
+	return s.repo.AddToCart(ctx, it)
 }
 
-func (s *Service) GetCart(ctx context.Context, userID int) ([]types.CartItem, error) {
-	return s.repo.GetCart(ctx, userID)
+func (s *Service) GetCart(ctx context.Context, uid int) ([]types.CartItem, error) {
+	return s.repo.GetCart(ctx, uid)
 }
 
-func (s *Service) PlaceOrder(ctx context.Context, req *types.PlaceOrderRequest) error {
-	return s.repo.PlaceOrder(ctx, req)
+func (s *Service) PlaceOrder(ctx context.Context, uid int, req *types.PlaceOrderRequest) error {
+	return s.repo.PlaceOrder(ctx, uid, req)
 }
 
-func (s *Service) GetOrdersByRestaurantID(ctx context.Context, restaurantID int) ([]types.Order, error) {
-	return s.repo.GetOrdersByRestaurantID(ctx, restaurantID)
+func (s *Service) GetOrdersByUser(ctx context.Context, uid int) ([]types.OrderResponse, error) {
+	return s.repo.GetOrdersByUser(ctx, uid)
 }
 
-func (s *Service) UpdateOrderStatus(ctx context.Context, orderID int, status string) error {
-	return s.repo.UpdateOrderStatus(ctx, orderID, status)
+func (s *Service) GetOrdersByRestaurant(ctx context.Context, rid int) ([]types.OrderResponse, error) {
+	return s.repo.GetOrdersByRestaurant(ctx, rid)
+}
+
+func (s *Service) UpdateOrderStatus(ctx context.Context, id int, status string) error {
+	return s.repo.UpdateOrderStatus(ctx, id, status)
 }
