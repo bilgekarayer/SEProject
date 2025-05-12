@@ -25,6 +25,17 @@ definitions:
         example: john_doe
         type: string
     type: object
+  types.Menu:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      price:
+        type: number
+      restaurant_id:
+        type: integer
+    type: object
   types.OrderItem:
     properties:
       product_id:
@@ -254,6 +265,97 @@ paths:
       summary: Register a new user
       tags:
       - User
+  /restaurant/menu:
+    post:
+      consumes:
+      - application/json
+      description: Adds a new item to a restaurant's menu
+      parameters:
+      - description: Menu item
+        in: body
+        name: item
+        required: true
+        schema:
+          $ref: '#/definitions/types.Menu'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Menü ürünü eklendi
+          schema:
+            type: string
+        "400":
+          description: Geçersiz menü verisi
+          schema:
+            type: string
+        "500":
+          description: Menü ürünü eklenemedi
+          schema:
+            type: string
+      summary: Create a new menu item
+      tags:
+      - Menu
+  /restaurant/menu/{id}:
+    delete:
+      description: Deletes an item from the menu
+      parameters:
+      - description: Menu Item ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Menü ürünü silindi
+          schema:
+            type: string
+        "400":
+          description: Geçersiz ID
+          schema:
+            type: string
+        "500":
+          description: Menü ürünü silinemedi
+          schema:
+            type: string
+      summary: Delete a menu item
+      tags:
+      - Menu
+    put:
+      consumes:
+      - application/json
+      description: Updates the details of an existing menu item
+      parameters:
+      - description: Menu Item ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Menu item data
+        in: body
+        name: item
+        required: true
+        schema:
+          $ref: '#/definitions/types.Menu'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Menü ürünü güncellendi
+          schema:
+            type: string
+        "400":
+          description: Geçersiz veri
+          schema:
+            type: string
+        "500":
+          description: Menü ürünü güncellenemedi
+          schema:
+            type: string
+      summary: Update a menu item
+      tags:
+      - Menu
   /restaurant/orders:
     get:
       parameters:
@@ -340,6 +442,35 @@ paths:
       summary: Mark order as sent
       tags:
       - Order
+  /restaurants/{id}/menu:
+    get:
+      description: Returns menu items for a given restaurant
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.Menu'
+            type: array
+        "400":
+          description: Geçersiz restoran ID
+          schema:
+            type: string
+        "500":
+          description: Menü getirilemedi
+          schema:
+            type: string
+      summary: Get menu by restaurant ID
+      tags:
+      - Menu
   /user:
     get:
       description: Get a user by providing their username
