@@ -58,9 +58,9 @@ func (h *Handler) Register(c echo.Context) error {
 	u := &types.User{
 		Username:  req.Username,
 		Password:  string(hashed),
-		FirstName: req.FirstName, // ⬅️ eklendi
-		LastName:  req.LastName,  // ⬅️ eklendi
-		RoleID:    1,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		RoleID:    1, // default user
 	}
 
 	if err := h.service.Register(c.Request().Context(), u); err != nil {
@@ -88,7 +88,10 @@ func (h *Handler) Login(c echo.Context) error {
 
 	user, err := h.service.GetUserByUsername(c.Request().Context(), req.Username, "")
 	if err != nil {
-		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Kullanıcı bulunamadı"})
+		return c.JSON(http.StatusUnauthorized, echo.Map{
+			"error": "Kullanıcı bulunamadı",
+			"debug": err.Error(),
+		})
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
@@ -106,7 +109,6 @@ func (h *Handler) Login(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Token oluşturulamadı"})
 	}
-
 	cookie := &http.Cookie{
 		Name:     "Authorization",
 		Value:    token,
@@ -117,6 +119,7 @@ func (h *Handler) Login(c echo.Context) error {
 	}
 	c.SetCookie(cookie)
 
+	// JSON response
 	return c.JSON(http.StatusOK, echo.Map{
 		"message": "Giriş başarılı",
 	})
@@ -168,30 +171,41 @@ func (h *Handler) CreateUser(c echo.Context) error {
 }
 
 // @Summary Update user
-// @Description Updates the user data by ID
+// @Description Updates mutable user fields (username, password, first_name, last_name, role_id)
 // @Tags User
 // @Accept json
 // @Produce json
-// @Param id path int true "User ID"
-// @Param user body types.User true "User data"
+// @Param id   path int                    true  "User ID"
+// @Param body body types.UpdateUserRequest true "Updatable fields"
 // @Success 200 {string} string "User updated"
 // @Failure 400 {string} string "Invalid id or input"
 // @Failure 500 {string} string "Failed to update user"
 // @Router /user/{id} [put]
 func (h *Handler) UpdateUser(c echo.Context) error {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		return c.String(http.StatusBadRequest, "Invalid id")
 	}
 
-	var user types.User
-	if err := c.Bind(&user); err != nil {
+	var req types.UpdateUserRequest
+	if err := c.Bind(&req); err != nil {
 		return c.String(http.StatusBadRequest, "Invalid input")
 	}
 
-	if err := h.service.UpdateUser(c.Request().Context(), id, &user); err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to update user")
+	// password boşsa şifreyi koru
+	if req.Password == "" {
+		if err := h.service.UpdateUserPartial(c.Request().Context(), id, &req); err != nil {
+			return c.String(http.StatusInternalServerError, "Failed to update user")
+		}
+	} else { // yeni şifre hash’le
+		hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return c.String(http.StatusInternalServerError, "Password hash error")
+		}
+		req.Password = string(hashed)
+		if err := h.service.UpdateUserPartial(c.Request().Context(), id, &req); err != nil {
+			return c.String(http.StatusInternalServerError, "Failed to update user")
+		}
 	}
 
 	return c.String(http.StatusOK, "User updated")

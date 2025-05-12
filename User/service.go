@@ -32,8 +32,8 @@ func (s *Service) CreateUser(ctx context.Context, user *types.User) error {
 	return s.repo.Create(ctx, user)
 }
 
-func (s *Service) UpdateUser(ctx context.Context, id int, user *types.User) error {
-	return s.repo.Update(ctx, id, user)
+func (s *Service) UpdateUserPartial(ctx context.Context, id int, req *types.UpdateUserRequest) error {
+	return s.repo.UpdateAllowed(ctx, id, req)
 }
 
 func (s *Service) DeleteUser(ctx context.Context, id int) error {

@@ -15,7 +15,7 @@ func NewRepository(db *sql.DB) *Repository {
 }
 
 func (r *Repository) GetAll(ctx context.Context) ([]types.Restaurant, error) {
-	rows, err := r.db.QueryContext(ctx, "SELECT id, name, location FROM restaurants")
+	rows, err := r.db.QueryContext(ctx, "SELECT id, name, location, cuisine, description, avg_price, rating FROM restaurants")
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +24,7 @@ func (r *Repository) GetAll(ctx context.Context) ([]types.Restaurant, error) {
 	var restaurants []types.Restaurant
 	for rows.Next() {
 		var res types.Restaurant
-		if err := rows.Scan(&res.ID, &res.Name, &res.Location); err != nil {
+		if err := rows.Scan(&res.ID, &res.Name, &res.Location, &res.Cuisine, &res.Description, &res.AvgPrice, &res.Rating); err != nil {
 			return nil, err
 		}
 		restaurants = append(restaurants, res)

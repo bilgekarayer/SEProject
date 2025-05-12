@@ -11,94 +11,123 @@ type Repository struct {
 }
 
 func NewRepository(db *sql.DB) *Repository {
-	return &Repository{db: db}
+	return &Repository{db}
 }
 
-// Sepete ürün ekle
-func (r *Repository) AddToCart(ctx context.Context, item *types.CartItem) error {
-	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO cart (user_id, product_id, quantity)
-		VALUES ($1, $2, $3)
-	`, item.UserID, item.ProductID, item.Quantity)
+func (r *Repository) AddToCart(ctx context.Context, it *types.CartItem) error {
+	_, err := r.db.ExecContext(ctx, `insert into cart (user_id,product_id,quantity) values ($1,$2,$3)`, it.UserID, it.ProductID, it.Quantity)
 	return err
 }
 
-// Sepeti getir
-func (r *Repository) GetCart(ctx context.Context, userID int) ([]types.CartItem, error) {
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT user_id, product_id, quantity FROM cart
-		WHERE user_id = $1
-	`, userID)
+func (r *Repository) GetCart(ctx context.Context, uid int) ([]types.CartItem, error) {
+	rows, err := r.db.QueryContext(ctx, `select user_id,product_id,quantity from cart where user_id=$1`, uid)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-
-	var cart []types.CartItem
+	var list []types.CartItem
 	for rows.Next() {
-		var item types.CartItem
-		if err := rows.Scan(&item.UserID, &item.ProductID, &item.Quantity); err != nil {
+		var it types.CartItem
+		if err = rows.Scan(&it.UserID, &it.ProductID, &it.Quantity); err != nil {
 			return nil, err
 		}
-		cart = append(cart, item)
+		list = append(list, it)
 	}
-	return cart, nil
+	return list, nil
 }
 
-// Sipariş oluştur
-func (r *Repository) PlaceOrder(ctx context.Context, req *types.PlaceOrderRequest) error {
+func (r *Repository) PlaceOrder(ctx context.Context, uid int, req *types.PlaceOrderRequest) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-
-	_, err = tx.ExecContext(ctx, `
-		INSERT INTO orders (user_id, restaurant_id, address, status)
-		VALUES ($1, $2, $3, 'pending')
-	`, req.UserID, req.RestaurantID, req.Address)
+	var oid int
+	err = tx.QueryRowContext(ctx, `insert into orders (user_id,restaurant_id,address,status,total) values ($1,$2,$3,'pending',0) returning id`, uid, req.RestaurantID, req.Address).Scan(&oid)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
-
-	_, err = tx.ExecContext(ctx, `
-		DELETE FROM cart WHERE user_id = $1
-	`, req.UserID)
-	if err != nil {
+	var total float64
+	for _, it := range req.Items {
+		var price float64
+		if err = tx.QueryRowContext(ctx, `select price from menu where id=$1`, it.ProductID).Scan(&price); err != nil {
+			tx.Rollback()
+			return err
+		}
+		if _, err = tx.ExecContext(ctx, `insert into order_items (order_id,product_id,quantity,unit_price) values ($1,$2,$3,$4)`, oid, it.ProductID, it.Quantity, price); err != nil {
+			tx.Rollback()
+			return err
+		}
+		total += price * float64(it.Quantity)
+	}
+	if _, err = tx.ExecContext(ctx, `update orders set total=$1 where id=$2`, total, oid); err != nil {
 		tx.Rollback()
 		return err
 	}
-
 	return tx.Commit()
 }
 
-// Restoranın siparişlerini getir
-func (r *Repository) GetOrdersByRestaurantID(ctx context.Context, restaurantID int) ([]types.Order, error) {
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, user_id, restaurant_id, address, status
-		FROM orders
-		WHERE restaurant_id = $1
-	`, restaurantID)
+func (r *Repository) GetOrdersByUser(ctx context.Context, uid int) ([]types.OrderResponse, error) {
+	rows, err := r.db.QueryContext(ctx, `select o.id,u.username,r.name,o.address,o.status,o.total from orders o join users u on o.user_id=u.id join restaurants r on o.restaurant_id=r.id where o.user_id=$1`, uid)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-
-	var orders []types.Order
+	var out []types.OrderResponse
 	for rows.Next() {
-		var o types.Order
-		if err := rows.Scan(&o.ID, &o.UserID, &o.RestaurantID, &o.Address, &o.Status); err != nil {
+		var o types.OrderResponse
+		if err = rows.Scan(&o.ID, &o.User, &o.Restaurant, &o.Address, &o.Status, &o.Total); err != nil {
 			return nil, err
 		}
-		orders = append(orders, o)
+		itRows, err := r.db.QueryContext(ctx, `select m.name,oi.quantity from order_items oi join menu m on oi.product_id=m.id where oi.order_id=$1`, o.ID)
+		if err != nil {
+			return nil, err
+		}
+		for itRows.Next() {
+			var ir types.ItemResponse
+			if err = itRows.Scan(&ir.Name, &ir.Quantity); err != nil {
+				itRows.Close()
+				return nil, err
+			}
+			o.Items = append(o.Items, ir)
+		}
+		itRows.Close()
+		out = append(out, o)
 	}
-	return orders, nil
+	return out, nil
 }
 
-// Siparişin durumunu güncelle (prepared/sent)
-func (r *Repository) UpdateOrderStatus(ctx context.Context, orderID int, status string) error {
-	_, err := r.db.ExecContext(ctx, `
-		UPDATE orders SET status = $1 WHERE id = $2
-	`, status, orderID)
+func (r *Repository) GetOrdersByRestaurant(ctx context.Context, rid int) ([]types.OrderResponse, error) {
+	rows, err := r.db.QueryContext(ctx, `select o.id,u.username,r.name,o.address,o.status,o.total from orders o join users u on o.user_id=u.id join restaurants r on o.restaurant_id=r.id where o.restaurant_id=$1`, rid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []types.OrderResponse
+	for rows.Next() {
+		var o types.OrderResponse
+		if err = rows.Scan(&o.ID, &o.User, &o.Restaurant, &o.Address, &o.Status, &o.Total); err != nil {
+			return nil, err
+		}
+		itRows, err := r.db.QueryContext(ctx, `select m.name,oi.quantity from order_items oi join menu m on oi.product_id=m.id where oi.order_id=$1`, o.ID)
+		if err != nil {
+			return nil, err
+		}
+		for itRows.Next() {
+			var ir types.ItemResponse
+			if err = itRows.Scan(&ir.Name, &ir.Quantity); err != nil {
+				itRows.Close()
+				return nil, err
+			}
+			o.Items = append(o.Items, ir)
+		}
+		itRows.Close()
+		out = append(out, o)
+	}
+	return out, nil
+}
+
+func (r *Repository) UpdateOrderStatus(ctx context.Context, id int, status string) error {
+	_, err := r.db.ExecContext(ctx, `update orders set status=$1 where id=$2`, status, id)
 	return err
 }

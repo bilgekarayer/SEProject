@@ -8,20 +8,24 @@ package main
 
 import (
 	"context"
-	"github.com/labstack/echo/v4/middleware"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+
+	delivery "SEProject/Delivery"
 	menu "SEProject/Menu"
+	customMiddleware "SEProject/Middleware"
 	order "SEProject/Order"
 	restaurant "SEProject/Restaurant"
+	search "SEProject/Search"
 	user "SEProject/User"
 	"SEProject/config"
 
 	_ "SEProject/docs"
-	"github.com/jackc/pgx/v5"
-	"github.com/labstack/echo/v4"
 	_ "github.com/lib/pq"
 	echoSwagger "github.com/swaggo/echo-swagger"
 )
@@ -81,8 +85,20 @@ func main() {
 	orderRepo := order.NewRepository(config.DB)
 	orderService := order.NewService(orderRepo)
 	order.NewHandler(e, orderService)
+	// SEARCH
+	search.NewHandler(e, restaurantService)
 
-	// PORT
+	// DELIVERY (YENİ EKLENDİ)
+	deliveryRepo := delivery.NewRepository(config.DB)
+	deliveryService := delivery.NewService(deliveryRepo)
+
+	// /delivery/... yolları sadece auth'lu ve delivery_person rolü olanlara açık
+	deliveryGroup := e.Group("/delivery",
+		customMiddleware.RequireAuth,
+		customMiddleware.RequireRole("delivery_person"),
+	)
+	delivery.NewHandler(deliveryGroup, deliveryService)
+
 	log.Println("Sunucu 8080 portunda çalışıyor...")
 	e.Logger.Fatal(e.Start(":8080"))
 }
