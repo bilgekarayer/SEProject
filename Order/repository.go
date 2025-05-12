@@ -4,6 +4,7 @@ import (
 	"SEProject/Order/types"
 	"context"
 	"database/sql"
+	"log"
 )
 
 type Repository struct {
@@ -37,34 +38,73 @@ func (r *Repository) GetCart(ctx context.Context, uid int) ([]types.CartItem, er
 }
 
 func (r *Repository) PlaceOrder(ctx context.Context, uid int, req *types.PlaceOrderRequest) error {
-	tx, err := r.db.BeginTx(ctx, nil)
+	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return err
 	}
-	var oid int
-	err = tx.QueryRowContext(ctx, `insert into orders (user_id,restaurant_id,address,status,total) values ($1,$2,$3,'pending',0) returning id`, uid, req.RestaurantID, req.Address).Scan(&oid)
+
+	// 1) role_id = 4 olan tüm kullanıcı id’lerini JSON dizi (string) olarak al
+	var deliveryIDs string
+	err = tx.QueryRowContext(ctx, `
+        SELECT COALESCE(json_agg(id)::text, '[]')
+        FROM users
+        WHERE role_id = 4
+    `).Scan(&deliveryIDs)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
+
+	// 2) Siparişi oluştur
+	var oid int
+	err = tx.QueryRowContext(ctx, `
+        INSERT INTO orders
+            (user_id, restaurant_id, address, status, total, delivery_person_id)
+        VALUES
+            ($1, $2, $3, 'pending', 0, $4::jsonb)
+        RETURNING id
+    `, uid, req.RestaurantID, req.Address, deliveryIDs).Scan(&oid)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// 3) Ürünleri ekle ve toplamı hesapla
 	var total float64
 	for _, it := range req.Items {
 		var price float64
-		if err = tx.QueryRowContext(ctx, `select price from menu where id=$1`, it.ProductID).Scan(&price); err != nil {
+		if err = tx.QueryRowContext(ctx,
+			`SELECT price FROM menu WHERE id = $1`,
+			it.ProductID,
+		).Scan(&price); err != nil {
 			tx.Rollback()
 			return err
 		}
-		if _, err = tx.ExecContext(ctx, `insert into order_items (order_id,product_id,quantity,unit_price) values ($1,$2,$3,$4)`, oid, it.ProductID, it.Quantity, price); err != nil {
+
+		if _, err = tx.ExecContext(ctx, `
+            INSERT INTO order_items (order_id, product_id, quantity, unit_price)
+            VALUES ($1, $2, $3, $4)
+        `, oid, it.ProductID, it.Quantity, price); err != nil {
 			tx.Rollback()
 			return err
 		}
 		total += price * float64(it.Quantity)
 	}
-	if _, err = tx.ExecContext(ctx, `update orders set total=$1 where id=$2`, total, oid); err != nil {
+
+	// 4) Toplamı güncelle
+	if _, err = tx.ExecContext(ctx,
+		`UPDATE orders SET total = $1 WHERE id = $2`,
+		total, oid,
+	); err != nil {
 		tx.Rollback()
 		return err
 	}
-	return tx.Commit()
+
+	if err = tx.Commit(); err != nil {
+		log.Printf("tx commit error: %v", err)
+		return err
+	}
+	return nil
 }
 
 func (r *Repository) GetOrdersByUser(ctx context.Context, uid int) ([]types.OrderResponse, error) {
