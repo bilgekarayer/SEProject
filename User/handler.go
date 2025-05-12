@@ -21,8 +21,8 @@ func NewHandler(e *echo.Echo, service *Service) {
 	h := &Handler{service: service}
 
 	api := e.Group("/user")
-	api.POST("/register", h.Register)
-	api.POST("/login", h.Login)
+	e.POST("/register", h.Register)
+	e.POST("/login", h.Login)
 	api.GET("", h.GetUserByUsername, Middleware.RequireAuth) // /user?username=abc
 	api.POST("", h.CreateUser)                               // POST /user
 	api.PUT("/:id", h.UpdateUser)                            // PUT /user/5

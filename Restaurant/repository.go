@@ -33,12 +33,24 @@ func (r *Repository) GetAll(ctx context.Context) ([]types.Restaurant, error) {
 }
 
 func (r *Repository) Create(ctx context.Context, rest *types.Restaurant) error {
-	_, err := r.db.ExecContext(ctx, "INSERT INTO restaurants (name, location) VALUES ($1, $2)", rest.Name, rest.Location)
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO restaurants (name, description, location, cuisine, avg_price, rating)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, rest.Name, rest.Description, rest.Location, rest.Cuisine, rest.AvgPrice, rest.Rating)
 	return err
 }
 
 func (r *Repository) Update(ctx context.Context, id int, rest *types.Restaurant) error {
-	_, err := r.db.ExecContext(ctx, "UPDATE restaurants SET name=$1, location=$2 WHERE id=$3", rest.Name, rest.Location, id)
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE restaurants
+		SET name = $1,
+			description = $2,
+			location = $3,
+			cuisine = $4,
+			avg_price = $5,
+			rating = $6
+		WHERE id = $7
+	`, rest.Name, rest.Description, rest.Location, rest.Cuisine, rest.AvgPrice, rest.Rating, id)
 	return err
 }
 

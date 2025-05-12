@@ -1,11 +1,11 @@
 package types
 
 type Restaurant struct {
-	ID          int
-	Name        string
-	Description string
-	Location    string
-	Cuisine     string
+	ID          int     `json:"id"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Location    string  `json:"location"`
+	Cuisine     string  `json:"cuisine"`
 	AvgPrice    int     `json:"avg_price"`
 	Rating      float64 `json:"rating"`
 }
