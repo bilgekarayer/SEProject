@@ -15,6 +15,254 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/restaurant": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Restaurant"
+                ],
+                "summary": "Create restaurant (multipart)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Name",
+                        "name": "name",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Description",
+                        "name": "description",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Location",
+                        "name": "location",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Cuisine",
+                        "name": "cuisine",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Avg price",
+                        "name": "avg_price",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Rating",
+                        "name": "rating",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Image file",
+                        "name": "image",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/types.Restaurant"
+                        }
+                    },
+                    "400": {
+                        "description": "bad",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "fail",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/restaurant/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Restaurant"
+                ],
+                "summary": "Update restaurant",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Restaurant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Restaurant info",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/types.Restaurant"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ok",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "bad",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "fail",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Restaurant"
+                ],
+                "summary": "Delete restaurant",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Restaurant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ok",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "bad",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "fail",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/restaurant/{id}/image": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Restaurant"
+                ],
+                "summary": "Upload restaurant image",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Restaurant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Image file",
+                        "name": "image",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "bad",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "fail",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/cart": {
             "get": {
                 "security": [
@@ -332,9 +580,13 @@ const docTemplate = `{
         },
         "/restaurant/menu": {
             "post": {
-                "description": "Adds a new item to a restaurant's menu",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -342,35 +594,42 @@ const docTemplate = `{
                 "tags": [
                     "Menu"
                 ],
-                "summary": "Create a new menu item",
+                "summary": "Create menu item (multipart)",
                 "parameters": [
                     {
-                        "description": "Menu item",
-                        "name": "item",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/types.Menu"
-                        }
+                        "type": "integer",
+                        "description": "Restaurant ID",
+                        "name": "restaurant_id",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Name",
+                        "name": "name",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Price",
+                        "name": "price",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Image file",
+                        "name": "image",
+                        "in": "formData",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Menü ürünü eklendi",
+                        "description": "Created",
                         "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Geçersiz menü verisi",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Menü ürünü eklenemedi",
-                        "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/types.Menu"
                         }
                     }
                 }
@@ -378,7 +637,11 @@ const docTemplate = `{
         },
         "/restaurant/menu/{id}": {
             "put": {
-                "description": "Updates the details of an existing menu item",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -388,18 +651,18 @@ const docTemplate = `{
                 "tags": [
                     "Menu"
                 ],
-                "summary": "Update a menu item",
+                "summary": "Update menu item (name/price)",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Menu Item ID",
+                        "description": "Menu ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Menu item data",
-                        "name": "item",
+                        "description": "Data",
+                        "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -409,19 +672,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Menü ürünü güncellendi",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Geçersiz veri",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Menü ürünü güncellenemedi",
+                        "description": "ok",
                         "schema": {
                             "type": "string"
                         }
@@ -429,18 +680,19 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Deletes an item from the menu",
-                "produces": [
-                    "application/json"
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
                 ],
                 "tags": [
                     "Menu"
                 ],
-                "summary": "Delete a menu item",
+                "summary": "Delete menu item",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Menu Item ID",
+                        "description": "Menu ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -448,19 +700,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Menü ürünü silindi",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Geçersiz ID",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Menü ürünü silinemedi",
+                        "description": "ok",
                         "schema": {
                             "type": "string"
                         }
@@ -606,21 +846,51 @@ const docTemplate = `{
                 }
             }
         },
-        "/restaurants/{id}/menu": {
+        "/restaurants": {
             "get": {
-                "description": "Returns menu items for a given restaurant",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Restaurant"
+                ],
+                "summary": "List all restaurants",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/types.Restaurant"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/restaurants/{rid}/menu": {
+            "get": {
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Menu"
                 ],
-                "summary": "Get menu by restaurant ID",
+                "summary": "List menu items",
                 "parameters": [
                     {
                         "type": "integer",
                         "description": "Restaurant ID",
-                        "name": "id",
+                        "name": "rid",
                         "in": "path",
                         "required": true
                     }
@@ -633,18 +903,6 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/types.Menu"
                             }
-                        }
-                    },
-                    "400": {
-                        "description": "Geçersiz restoran ID",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Menü getirilemedi",
-                        "schema": {
-                            "type": "string"
                         }
                     }
                 }
@@ -973,6 +1231,10 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "image_url": {
+                    "description": "NEW",
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -1057,6 +1319,35 @@ const docTemplate = `{
                 },
                 "username": {
                     "type": "string"
+                }
+            }
+        },
+        "types.Restaurant": {
+            "type": "object",
+            "properties": {
+                "avg_price": {
+                    "type": "integer"
+                },
+                "cuisine": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "number"
                 }
             }
         },

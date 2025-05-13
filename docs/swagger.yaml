@@ -29,6 +29,9 @@ definitions:
     properties:
       id:
         type: integer
+      image_url:
+        description: NEW
+        type: string
       name:
         type: string
       price:
@@ -86,6 +89,25 @@ definitions:
       username:
         type: string
     type: object
+  types.Restaurant:
+    properties:
+      avg_price:
+        type: integer
+      cuisine:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      image_url:
+        type: string
+      location:
+        type: string
+      name:
+        type: string
+      rating:
+        type: number
+    type: object
   types.UpdateUserRequest:
     properties:
       first_name:
@@ -123,6 +145,166 @@ info:
   title: SEProject API
   version: "1.0"
 paths:
+  /admin/restaurant:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: Name
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: Description
+        in: formData
+        name: description
+        required: true
+        type: string
+      - description: Location
+        in: formData
+        name: location
+        required: true
+        type: string
+      - description: Cuisine
+        in: formData
+        name: cuisine
+        required: true
+        type: string
+      - description: Avg price
+        in: formData
+        name: avg_price
+        required: true
+        type: integer
+      - description: Rating
+        in: formData
+        name: rating
+        required: true
+        type: number
+      - description: Image file
+        in: formData
+        name: image
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/types.Restaurant'
+        "400":
+          description: bad
+          schema:
+            type: string
+        "500":
+          description: fail
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create restaurant (multipart)
+      tags:
+      - Restaurant
+  /admin/restaurant/{id}:
+    delete:
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+        "400":
+          description: bad
+          schema:
+            type: string
+        "500":
+          description: fail
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete restaurant
+      tags:
+      - Restaurant
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Restaurant info
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.Restaurant'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+        "400":
+          description: bad
+          schema:
+            type: string
+        "500":
+          description: fail
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update restaurant
+      tags:
+      - Restaurant
+  /admin/restaurant/{id}/image:
+    put:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Image file
+        in: formData
+        name: image
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: bad
+          schema:
+            type: string
+        "500":
+          description: fail
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Upload restaurant image
+      tags:
+      - Restaurant
   /cart:
     get:
       produces:
@@ -324,73 +506,70 @@ paths:
   /restaurant/menu:
     post:
       consumes:
-      - application/json
-      description: Adds a new item to a restaurant's menu
+      - multipart/form-data
       parameters:
-      - description: Menu item
-        in: body
-        name: item
+      - description: Restaurant ID
+        in: formData
+        name: restaurant_id
         required: true
-        schema:
-          $ref: '#/definitions/types.Menu'
+        type: integer
+      - description: Name
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: Price
+        in: formData
+        name: price
+        required: true
+        type: number
+      - description: Image file
+        in: formData
+        name: image
+        required: true
+        type: file
       produces:
       - application/json
       responses:
         "201":
-          description: Menü ürünü eklendi
+          description: Created
           schema:
-            type: string
-        "400":
-          description: Geçersiz menü verisi
-          schema:
-            type: string
-        "500":
-          description: Menü ürünü eklenemedi
-          schema:
-            type: string
-      summary: Create a new menu item
+            $ref: '#/definitions/types.Menu'
+      security:
+      - BearerAuth: []
+      summary: Create menu item (multipart)
       tags:
       - Menu
   /restaurant/menu/{id}:
     delete:
-      description: Deletes an item from the menu
       parameters:
-      - description: Menu Item ID
+      - description: Menu ID
         in: path
         name: id
         required: true
         type: integer
-      produces:
-      - application/json
       responses:
         "200":
-          description: Menü ürünü silindi
+          description: ok
           schema:
             type: string
-        "400":
-          description: Geçersiz ID
-          schema:
-            type: string
-        "500":
-          description: Menü ürünü silinemedi
-          schema:
-            type: string
-      summary: Delete a menu item
+      security:
+      - BearerAuth: []
+      summary: Delete menu item
       tags:
       - Menu
     put:
       consumes:
       - application/json
-      description: Updates the details of an existing menu item
       parameters:
-      - description: Menu Item ID
+      - description: Menu ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Menu item data
+      - description: Data
         in: body
-        name: item
+        name: body
         required: true
         schema:
           $ref: '#/definitions/types.Menu'
@@ -398,18 +577,12 @@ paths:
       - application/json
       responses:
         "200":
-          description: Menü ürünü güncellendi
+          description: ok
           schema:
             type: string
-        "400":
-          description: Geçersiz veri
-          schema:
-            type: string
-        "500":
-          description: Menü ürünü güncellenemedi
-          schema:
-            type: string
-      summary: Update a menu item
+      security:
+      - BearerAuth: []
+      summary: Update menu item (name/price)
       tags:
       - Menu
   /restaurant/orders:
@@ -498,13 +671,32 @@ paths:
       summary: Mark order as prepared
       tags:
       - Order
-  /restaurants/{id}/menu:
+  /restaurants:
     get:
-      description: Returns menu items for a given restaurant
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.Restaurant'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List all restaurants
+      tags:
+      - Restaurant
+  /restaurants/{rid}/menu:
+    get:
       parameters:
       - description: Restaurant ID
         in: path
-        name: id
+        name: rid
         required: true
         type: integer
       produces:
@@ -516,15 +708,7 @@ paths:
             items:
               $ref: '#/definitions/types.Menu'
             type: array
-        "400":
-          description: Geçersiz restoran ID
-          schema:
-            type: string
-        "500":
-          description: Menü getirilemedi
-          schema:
-            type: string
-      summary: Get menu by restaurant ID
+      summary: List menu items
       tags:
       - Menu
   /user:

@@ -57,6 +57,8 @@ func main() {
 	// 3. Echo Web Framework başlatılıyor
 	e := echo.New()
 
+	e.Static("/static", "uploads")
+
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:3001"},
 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete},

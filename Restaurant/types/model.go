@@ -8,4 +8,5 @@ type Restaurant struct {
 	Cuisine     string  `json:"cuisine"`
 	AvgPrice    int     `json:"avg_price"`
 	Rating      float64 `json:"rating"`
+	ImageURL    string  `json:"image_url"`
 }

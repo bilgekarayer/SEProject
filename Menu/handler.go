@@ -4,110 +4,146 @@ import (
 	"SEProject/Menu/types"
 	"SEProject/Middleware"
 	"github.com/labstack/echo/v4"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 )
 
-type Handler struct {
-	service *Service
-}
+type Handler struct{ service *Service }
 
-func NewHandler(e *echo.Echo, service *Service) {
-	h := &Handler{service: service}
-	e.GET("/restaurants/:id/menu", h.GetMenuByRestaurant)
-	e.POST("/restaurant/menu", h.CreateMenuItem, Middleware.RequireRoles("admin", "restaurant_admin"))
-	e.PUT("/restaurant/menu/:id", h.UpdateMenuItem, Middleware.RequireRoles("admin", "restaurant_admin"))
-	e.DELETE("/restaurant/menu/:id", h.DeleteMenuItem, Middleware.RequireRoles("admin", "restaurant_admin"))
+func NewHandler(e *echo.Echo, svc *Service) {
+	h := &Handler{svc}
+
+	// Listeleme
+	e.GET("/restaurants/:rid/menu", h.GetMenuByRestaurant)
+
+	// Oluştur + görsel (multipart)
+	e.POST("/restaurant/menu", h.CreateMenuItem,
+		Middleware.RequireRoles("admin", "restaurant_admin"))
+
+	// Güncelle / Sil
+	e.PUT("/restaurant/menu/:id", h.UpdateMenuItem,
+		Middleware.RequireRoles("admin", "restaurant_admin"))
+	e.DELETE("/restaurant/menu/:id", h.DeleteMenuItem,
+		Middleware.RequireRoles("admin", "restaurant_admin"))
 }
 
 // GetMenuByRestaurant godoc
-// @Summary Get menu by restaurant ID
-// @Description Returns menu items for a given restaurant
-// @Tags Menu
-// @Produce json
-// @Param id path int true "Restaurant ID"
-// @Success 200 {array} types.Menu
-// @Failure 400 {string} string "Geçersiz restoran ID"
-// @Failure 500 {string} string "Menü getirilemedi"
-// @Router /restaurants/{id}/menu [get]
+// @Summary      List menu items
+// @Tags         Menu
+// @Produce      json
+// @Param        rid path int true "Restaurant ID"
+// @Success      200 {array} types.Menu
+// @Router       /restaurants/{rid}/menu [get]
 func (h *Handler) GetMenuByRestaurant(c echo.Context) error {
-	restID, err := strconv.Atoi(c.Param("id"))
+	rid, err := strconv.Atoi(c.Param("rid"))
 	if err != nil {
-		return c.String(http.StatusBadRequest, "Geçersiz restoran ID")
+		return c.String(http.StatusBadRequest, "bad id")
 	}
-	menu, err := h.service.GetMenuByRestaurantID(c.Request().Context(), restID)
+	list, err := h.service.GetMenuByRestaurantID(c.Request().Context(), rid)
 	if err != nil {
-		return c.String(http.StatusInternalServerError, "Menü getirilemedi")
+		return c.String(http.StatusInternalServerError, "fail")
 	}
-	return c.JSON(http.StatusOK, menu)
+	return c.JSON(http.StatusOK, list)
 }
 
 // CreateMenuItem godoc
-// @Summary Create a new menu item
-// @Description Adds a new item to a restaurant's menu
-// @Tags Menu
-// @Accept json
-// @Produce json
-// @Param item body types.Menu true "Menu item"
-// @Success 201 {string} string "Menü ürünü eklendi"
-// @Failure 400 {string} string "Geçersiz menü verisi"
-// @Failure 500 {string} string "Menü ürünü eklenemedi"
-// @Router /restaurant/menu [post]
+// @Summary      Create menu item (multipart)
+// @Tags         Menu
+// @Security     BearerAuth
+// @Accept       mpfd
+// @Produce      json
+// @Param        restaurant_id formData int     true  "Restaurant ID"
+// @Param        name          formData string  true  "Name"
+// @Param        price         formData number  true  "Price"
+// @Param        image         formData file    true  "Image file"
+// @Success      201 {object}  types.Menu
+// @Router       /restaurant/menu [post]
 func (h *Handler) CreateMenuItem(c echo.Context) error {
-	var item types.Menu
-	if err := c.Bind(&item); err != nil {
-		return c.String(http.StatusBadRequest, "Geçersiz menü verisi")
+	rid, _ := strconv.Atoi(c.FormValue("restaurant_id"))
+	price, _ := strconv.ParseFloat(c.FormValue("price"), 64)
+
+	item := types.Menu{
+		RestaurantID: rid,
+		Name:         c.FormValue("name"),
+		Price:        price,
 	}
-	if err := h.service.CreateMenuItem(c.Request().Context(), &item); err != nil {
-		return c.String(http.StatusInternalServerError, "Menü ürünü eklenemedi")
+
+	// 1) DB’ye kaydet, id al
+	id, err := h.service.CreateMenuItem(c.Request().Context(), &item)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "db fail")
 	}
-	return c.String(http.StatusCreated, "Menü ürünü eklendi")
+
+	// 2) Dosya işle
+	fh, err := c.FormFile("image")
+	if err != nil {
+		return c.String(http.StatusBadRequest, "file missing")
+	}
+	src, _ := fh.Open()
+	defer src.Close()
+
+	ext := filepath.Ext(fh.Filename)
+	dstPath := filepath.Join("uploads", "menu", strconv.Itoa(id)+ext)
+	if err = os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+		return c.String(http.StatusInternalServerError, "mkdir fail")
+	}
+	dst, _ := os.Create(dstPath)
+	defer dst.Close()
+	if _, err = io.Copy(dst, src); err != nil {
+		return c.String(http.StatusInternalServerError, "copy fail")
+	}
+
+	url := "/static/menu/" + strconv.Itoa(id) + ext
+	if err = h.service.UpdateMenuItemImage(c.Request().Context(), id, url); err != nil {
+		return c.String(http.StatusInternalServerError, "img update fail")
+	}
+
+	item.ID, item.ImageURL = id, url
+	return c.JSON(http.StatusCreated, item)
 }
 
 // UpdateMenuItem godoc
-// @Summary Update a menu item
-// @Description Updates the details of an existing menu item
-// @Tags Menu
-// @Accept json
-// @Produce json
-// @Param id path int true "Menu Item ID"
-// @Param item body types.Menu true "Menu item data"
-// @Success 200 {string} string "Menü ürünü güncellendi"
-// @Failure 400 {string} string "Geçersiz veri"
-// @Failure 500 {string} string "Menü ürünü güncellenemedi"
-// @Router /restaurant/menu/{id} [put]
+// @Summary      Update menu item (name/price)
+// @Tags         Menu
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id   path int       true "Menu ID"
+// @Param        body body types.Menu true "Data"
+// @Success      200 {string} string "ok"
+// @Router       /restaurant/menu/{id} [put]
 func (h *Handler) UpdateMenuItem(c echo.Context) error {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		return c.String(http.StatusBadRequest, "Geçersiz ID")
+		return c.String(http.StatusBadRequest, "bad id")
 	}
-	var item types.Menu
-	if err := c.Bind(&item); err != nil {
-		return c.String(http.StatusBadRequest, "Geçersiz veri")
+	var m types.Menu
+	if err := c.Bind(&m); err != nil {
+		return c.String(http.StatusBadRequest, "bad body")
 	}
-	if err := h.service.UpdateMenuItem(c.Request().Context(), id, &item); err != nil {
-		return c.String(http.StatusInternalServerError, "Menü ürünü güncellenemedi")
+	if err := h.service.UpdateMenuItem(c.Request().Context(), id, &m); err != nil {
+		return c.String(http.StatusInternalServerError, "fail")
 	}
-	return c.String(http.StatusOK, "Menü ürünü güncellendi")
+	return c.String(http.StatusOK, "ok")
 }
 
 // DeleteMenuItem godoc
-// @Summary Delete a menu item
-// @Description Deletes an item from the menu
-// @Tags Menu
-// @Produce json
-// @Param id path int true "Menu Item ID"
-// @Success 200 {string} string "Menü ürünü silindi"
-// @Failure 400 {string} string "Geçersiz ID"
-// @Failure 500 {string} string "Menü ürünü silinemedi"
-// @Router /restaurant/menu/{id} [delete]
+// @Summary Delete menu item
+// @Tags    Menu
+// @Security BearerAuth
+// @Param   id path int true "Menu ID"
+// @Success 200 {string} string "ok"
+// @Router  /restaurant/menu/{id} [delete]
 func (h *Handler) DeleteMenuItem(c echo.Context) error {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		return c.String(http.StatusBadRequest, "Geçersiz ID")
+		return c.String(http.StatusBadRequest, "bad id")
 	}
-	if err := h.service.DeleteMenuItem(c.Request().Context(), id); err != nil {
-		return c.String(http.StatusInternalServerError, "Menü ürünü silinemedi")
+	if err = h.service.DeleteMenuItem(c.Request().Context(), id); err != nil {
+		return c.String(http.StatusInternalServerError, "fail")
 	}
-	return c.String(http.StatusOK, "Menü ürünü silindi")
+	return c.String(http.StatusOK, "ok")
 }
