@@ -95,7 +95,7 @@ func main() {
 	// /delivery/... yolları sadece auth'lu ve delivery_person rolü olanlara açık
 	deliveryGroup := e.Group("/delivery",
 		customMiddleware.RequireAuth,
-		customMiddleware.RequireRole("delivery_person"),
+		customMiddleware.RequireRoles("delivery_person", "admin"),
 	)
 	delivery.NewHandler(deliveryGroup, deliveryService)
 

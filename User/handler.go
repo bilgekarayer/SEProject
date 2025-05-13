@@ -23,11 +23,11 @@ func NewHandler(e *echo.Echo, service *Service) {
 	api := e.Group("/user")
 	e.POST("/register", h.Register)
 	e.POST("/login", h.Login)
-	api.GET("", h.GetUserByUsername, Middleware.RequireAuth) // /user?username=abc
-	api.POST("", h.CreateUser)                               // POST /user
-	api.PUT("/:id", h.UpdateUser)                            // PUT /user/5
-	api.DELETE("/:id", h.DeleteUser)                         // DELETE /user/5
-	api.GET("/all", h.GetAllUsers, Middleware.RequireAuth, Middleware.RequireRole("admin"))
+	api.GET("", h.GetUserByUsername, Middleware.RequireAuth)           // /user?username=abc
+	api.POST("", h.CreateUser)                                         // POST /user
+	api.PUT("/:id", h.UpdateUser, Middleware.RequireRoles("admin"))    // PUT /user/5
+	api.DELETE("/:id", h.DeleteUser, Middleware.RequireRoles("admin")) // DELETE /user/5
+	api.GET("/all", h.GetAllUsers, Middleware.RequireAuth, Middleware.RequireRoles("admin"))
 	api.GET("/me", h.GetCurrentUser, Middleware.RequireAuth)
 
 }

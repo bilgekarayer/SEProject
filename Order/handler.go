@@ -22,10 +22,11 @@ func NewHandler(e *echo.Echo, s *Service) {
 	auth.GET("/cart", h.GetCart)
 	auth.POST("/order/place", h.PlaceOrder)
 	auth.GET("/user/orders", h.MyOrders)
+	auth.GET("/orders", h.AllOrders, Middleware.RequireRoles("admin", "restaurant_admin"))
 
 	auth.GET("/restaurant/orders", h.RestaurantOrders)
-	auth.PUT("/restaurant/orders/:id/prepare", h.MarkPrepared)
-	auth.PUT("/restaurant/orders/:id/send", h.MarkSent)
+	auth.PUT("/restaurant/orders/:id/prepare", h.MarkPrepared, Middleware.RequireRoles("admin", "restaurant_admin"))
+	auth.PUT("/restaurant/orders/:id/delivered", h.MarkDelivered, Middleware.RequireRoles("admin", "delivery_person"))
 }
 
 func uid(c echo.Context) int {
@@ -70,6 +71,26 @@ func (h *Handler) GetCart(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "fail")
 	}
 	return c.JSON(http.StatusOK, items)
+}
+
+// AllOrders godoc
+// @Summary      List all orders (admin)
+// @Tags         Order
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {array}   types.OrderResponse
+// @Failure      403  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /orders [get]
+func (h *Handler) AllOrders(c echo.Context) error {
+	orders, err := h.s.GetAllOrders(c.Request().Context())
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Siparişler alınamadı"})
+	}
+	if orders == nil {
+		orders = []types.OrderResponse{}
+	}
+	return c.JSON(http.StatusOK, orders)
 }
 
 // PlaceOrder godoc
@@ -155,7 +176,7 @@ func (h *Handler) MarkPrepared(c echo.Context) error {
 }
 
 // MarkSent godoc
-// @Summary      Mark order as sent
+// @Summary      Mark order as delivered
 // @Tags         Order
 // @Security     BearerAuth
 // @Produce      json
@@ -163,13 +184,13 @@ func (h *Handler) MarkPrepared(c echo.Context) error {
 // @Success      200  {string}  string  "ok"
 // @Failure      400  {string}  string  "bad"
 // @Failure      500  {string}  string  "fail"
-// @Router       /restaurant/orders/{id}/send [put]
-func (h *Handler) MarkSent(c echo.Context) error {
+// @Router       /restaurant/orders/{id}/delivered [put]
+func (h *Handler) MarkDelivered(c echo.Context) error {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		return c.String(http.StatusBadRequest, "bad")
 	}
-	if err = h.s.UpdateOrderStatus(c.Request().Context(), id, "sent"); err != nil {
+	if err = h.s.UpdateOrderStatus(c.Request().Context(), id, "delivered"); err != nil {
 		return c.String(http.StatusInternalServerError, "fail")
 	}
 	return c.String(http.StatusOK, "ok")

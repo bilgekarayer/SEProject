@@ -1,8 +1,9 @@
 package Delivery
 
 import (
-	"SEProject/Delivery/types"
 	"context"
+
+	ordertypes "SEProject/Order/types"
 )
 
 type Service struct {
@@ -13,9 +14,6 @@ func NewService(repo *Repository) *Service {
 	return &Service{repo: repo}
 }
 
-func (s *Service) GetOrdersForDeliveryPerson(ctx context.Context, deliveryPersonID int) ([]types.DeliveryOrder, error) {
+func (s *Service) GetOrdersForDeliveryPerson(ctx context.Context, deliveryPersonID int) ([]ordertypes.OrderResponse, error) {
 	return s.repo.GetOrdersByDeliveryPersonID(ctx, deliveryPersonID)
-}
-func (s *Service) UpdateOrderStatus(ctx context.Context, orderID int, status string) error {
-	return s.repo.UpdateOrderStatus(ctx, orderID, status)
 }

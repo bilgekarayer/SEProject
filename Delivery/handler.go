@@ -1,11 +1,11 @@
 package Delivery
 
 import (
-	"fmt"
+	"SEProject/Middleware"
+	"SEProject/Order/types"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"net/http"
-	"strconv"
-	"strings"
 )
 
 type Handler struct {
@@ -15,53 +15,28 @@ type Handler struct {
 func NewHandler(g *echo.Group, service *Service) {
 	h := &Handler{service: service}
 	g.GET("/orders", h.GetOrders)
-	g.PUT("/orders/:id", h.UpdateOrderStatus) // ✅ Sipariş güncelleme route'u
 }
 
+func uid(c echo.Context) int {
+	return c.Get("user").(*jwt.Token).Claims.(*Middleware.Claims).UserID
+}
+
+// GetOrders godoc
+// @Summary      Kuryenin tüm siparişlerini listeler
+// @Tags         Delivery
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {array}   types.OrderResponse
+// @Failure      401  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /delivery/orders [get]
 func (h *Handler) GetOrders(c echo.Context) error {
-	uid := c.Get("userID")
-
-	var deliveryPersonID int
-	switch v := uid.(type) {
-	case int:
-		deliveryPersonID = v
-	case float64:
-		deliveryPersonID = int(v)
-	default:
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Kullanıcı ID alınamadı"})
-	}
-
-	orders, err := h.service.GetOrdersForDeliveryPerson(c.Request().Context(), deliveryPersonID)
+	orders, err := h.service.GetOrdersForDeliveryPerson(c.Request().Context(), uid(c))
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Siparişler alınamadı"})
 	}
-
+	if orders == nil {
+		orders = []types.OrderResponse{}
+	}
 	return c.JSON(http.StatusOK, orders)
-}
-
-// ✅ Sipariş durumu güncelleme fonksiyonu
-
-func (h *Handler) UpdateOrderStatus(c echo.Context) error {
-	fmt.Println("🔥 UpdateOrderStatus'a girildi")
-	idParam := strings.TrimSpace(c.Param("id")) // 👈 \n karakterlerini temizle
-	fmt.Println("ID PARAM:", idParam)
-
-	orderID, err := strconv.Atoi(idParam)
-	if err != nil {
-		fmt.Println("HATA:", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Geçersiz sipariş ID"})
-	}
-
-	var req struct {
-		Status string `json:"status"`
-	}
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Geçersiz veri"})
-	}
-
-	if err := h.service.UpdateOrderStatus(c.Request().Context(), orderID, req.Status); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Sipariş durumu güncellenemedi"})
-	}
-
-	return c.JSON(http.StatusOK, map[string]string{"message": "Sipariş durumu güncellendi"})
 }

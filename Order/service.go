@@ -36,3 +36,7 @@ func (s *Service) GetOrdersByRestaurant(ctx context.Context, rid int) ([]types.O
 func (s *Service) UpdateOrderStatus(ctx context.Context, id int, status string) error {
 	return s.repo.UpdateOrderStatus(ctx, id, status)
 }
+
+func (s *Service) GetAllOrders(ctx context.Context) ([]types.OrderResponse, error) {
+	return s.repo.GetAllOrders(ctx)
+}

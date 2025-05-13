@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -77,14 +78,17 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func RequireRole(requiredRole string) echo.MiddlewareFunc {
+func RequireRoles(roles ...string) echo.MiddlewareFunc {
+	roleSet := make(map[string]struct{}, len(roles))
+	for _, r := range roles {
+		roleSet[r] = struct{}{}
+	}
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			cookie, err := c.Cookie("Authorization")
 			if err != nil {
 				return c.NoContent(http.StatusUnauthorized)
 			}
-
 			tokenStr := cookie.Value
 			token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 				return []byte(os.Getenv("JWT_SECRET")), nil
@@ -92,15 +96,12 @@ func RequireRole(requiredRole string) echo.MiddlewareFunc {
 			if err != nil || !token.Valid {
 				return c.NoContent(http.StatusUnauthorized)
 			}
-
 			claims := token.Claims.(*Claims)
-			if claims.Role != requiredRole {
+			if _, ok := roleSet[strings.ToLower(claims.Role)]; !ok {
 				return c.NoContent(http.StatusForbidden)
 			}
-
 			c.Set("userID", claims.UserID)
 			c.Set("userRole", claims.Role)
-
 			return next(c)
 		}
 	}

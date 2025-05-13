@@ -174,6 +174,34 @@ paths:
       summary: Add item to cart
       tags:
       - Cart
+  /delivery/orders:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.OrderResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Kuryenin tüm siparişlerini listeler
+      tags:
+      - Delivery
   /login:
     post:
       consumes:
@@ -233,6 +261,34 @@ paths:
       security:
       - BearerAuth: []
       summary: Place a new order
+      tags:
+      - Order
+  /orders:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.OrderResponse'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List all orders (admin)
       tags:
       - Order
   /register:
@@ -386,6 +442,34 @@ paths:
       summary: List orders for a restaurant
       tags:
       - Order
+  /restaurant/orders/{id}/delivered:
+    put:
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+        "400":
+          description: bad
+          schema:
+            type: string
+        "500":
+          description: fail
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Mark order as delivered
+      tags:
+      - Order
   /restaurant/orders/{id}/prepare:
     put:
       parameters:
@@ -412,34 +496,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Mark order as prepared
-      tags:
-      - Order
-  /restaurant/orders/{id}/send:
-    put:
-      parameters:
-      - description: Order ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: ok
-          schema:
-            type: string
-        "400":
-          description: bad
-          schema:
-            type: string
-        "500":
-          description: fail
-          schema:
-            type: string
-      security:
-      - BearerAuth: []
-      summary: Mark order as sent
       tags:
       - Order
   /restaurants/{id}/menu:

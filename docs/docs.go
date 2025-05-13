@@ -98,6 +98,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/delivery/orders": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Kuryenin tüm siparişlerini listeler",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/types.OrderResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "description": "Authenticates user and returns JWT",
@@ -189,6 +234,51 @@ const docTemplate = `{
                         "description": "fail",
                         "schema": {
                             "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Order"
+                ],
+                "summary": "List all orders (admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/types.OrderResponse"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -426,7 +516,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/restaurant/orders/{id}/prepare": {
+        "/restaurant/orders/{id}/delivered": {
             "put": {
                 "security": [
                     {
@@ -439,7 +529,7 @@ const docTemplate = `{
                 "tags": [
                     "Order"
                 ],
-                "summary": "Mark order as prepared",
+                "summary": "Mark order as delivered",
                 "parameters": [
                     {
                         "type": "integer",
@@ -471,7 +561,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/restaurant/orders/{id}/send": {
+        "/restaurant/orders/{id}/prepare": {
             "put": {
                 "security": [
                     {
@@ -484,7 +574,7 @@ const docTemplate = `{
                 "tags": [
                     "Order"
                 ],
-                "summary": "Mark order as sent",
+                "summary": "Mark order as prepared",
                 "parameters": [
                     {
                         "type": "integer",

@@ -1,6 +1,7 @@
 package Restaurant
 
 import (
+	"SEProject/Middleware"
 	"SEProject/Restaurant/types"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -14,9 +15,9 @@ type Handler struct {
 func NewHandler(e *echo.Echo, service *Service) {
 	h := &Handler{service: service}
 	e.GET("/restaurants", h.GetAllRestaurants)
-	e.POST("/admin/restaurant", h.CreateRestaurant)
-	e.PUT("/admin/restaurant/:id", h.UpdateRestaurant)
-	e.DELETE("/admin/restaurant/:id", h.DeleteRestaurant)
+	e.POST("/admin/restaurant", h.CreateRestaurant, Middleware.RequireRoles("admin", "restaurant_admin"))
+	e.PUT("/admin/restaurant/:id", h.UpdateRestaurant, Middleware.RequireRoles("admin", "restaurant_admin"))
+	e.DELETE("/admin/restaurant/:id", h.DeleteRestaurant, Middleware.RequireRoles("admin", "restaurant_admin"))
 }
 
 func (h *Handler) GetAllRestaurants(c echo.Context) error {

@@ -171,3 +171,54 @@ func (r *Repository) UpdateOrderStatus(ctx context.Context, id int, status strin
 	_, err := r.db.ExecContext(ctx, `update orders set status=$1 where id=$2`, status, id)
 	return err
 }
+
+func (r *Repository) GetAllOrders(ctx context.Context) ([]types.OrderResponse, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT  o.id,
+		        u.username,
+		        r.name,
+		        o.address,
+		        o.status,
+		        o.total
+		FROM    orders o
+		JOIN    users        u ON u.id = o.user_id
+		JOIN    restaurants  r ON r.id = o.restaurant_id
+		ORDER BY o.id DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]types.OrderResponse, 0)
+	for rows.Next() {
+		var o types.OrderResponse
+		if err = rows.Scan(&o.ID, &o.User, &o.Restaurant, &o.Address, &o.Status, &o.Total); err != nil {
+			return nil, err
+		}
+
+		itRows, err := r.db.QueryContext(ctx, `
+			SELECT m.name, oi.quantity
+			FROM   order_items oi
+			JOIN   menu m ON m.id = oi.product_id
+			WHERE  oi.order_id = $1
+		`, o.ID)
+		if err != nil {
+			return nil, err
+		}
+		items := make([]types.ItemResponse, 0)
+		for itRows.Next() {
+			var ir types.ItemResponse
+			if err = itRows.Scan(&ir.Name, &ir.Quantity); err != nil {
+				itRows.Close()
+				return nil, err
+			}
+			items = append(items, ir)
+		}
+		itRows.Close()
+		o.Items = items
+
+		out = append(out, o)
+	}
+	return out, nil
+}

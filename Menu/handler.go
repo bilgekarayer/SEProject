@@ -2,6 +2,7 @@ package Menu
 
 import (
 	"SEProject/Menu/types"
+	"SEProject/Middleware"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
@@ -14,9 +15,9 @@ type Handler struct {
 func NewHandler(e *echo.Echo, service *Service) {
 	h := &Handler{service: service}
 	e.GET("/restaurants/:id/menu", h.GetMenuByRestaurant)
-	e.POST("/restaurant/menu", h.CreateMenuItem)
-	e.PUT("/restaurant/menu/:id", h.UpdateMenuItem)
-	e.DELETE("/restaurant/menu/:id", h.DeleteMenuItem)
+	e.POST("/restaurant/menu", h.CreateMenuItem, Middleware.RequireRoles("admin", "restaurant_admin"))
+	e.PUT("/restaurant/menu/:id", h.UpdateMenuItem, Middleware.RequireRoles("admin", "restaurant_admin"))
+	e.DELETE("/restaurant/menu/:id", h.DeleteMenuItem, Middleware.RequireRoles("admin", "restaurant_admin"))
 }
 
 // GetMenuByRestaurant godoc
