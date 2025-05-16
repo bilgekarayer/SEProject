@@ -235,26 +235,48 @@ paths:
       - Restaurant
     put:
       consumes:
-      - application/json
+      - multipart/form-data
       parameters:
       - description: Restaurant ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Restaurant info
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/types.Restaurant'
+      - description: Name
+        in: formData
+        name: name
+        type: string
+      - description: Description
+        in: formData
+        name: description
+        type: string
+      - description: Location
+        in: formData
+        name: location
+        type: string
+      - description: Cuisine
+        in: formData
+        name: cuisine
+        type: string
+      - description: Avg price
+        in: formData
+        name: avg_price
+        type: integer
+      - description: Rating
+        in: formData
+        name: rating
+        type: number
+      - description: New image
+        in: formData
+        name: image
+        type: file
       produces:
       - application/json
       responses:
         "200":
-          description: ok
+          description: OK
           schema:
-            type: string
+            $ref: '#/definitions/types.Restaurant'
         "400":
           description: bad
           schema:
@@ -265,7 +287,7 @@ paths:
             type: string
       security:
       - BearerAuth: []
-      summary: Update restaurant
+      summary: Update restaurant (multipart)
       tags:
       - Restaurant
   /admin/restaurant/{id}/image:
@@ -560,29 +582,43 @@ paths:
       - Menu
     put:
       consumes:
-      - application/json
+      - multipart/form-data
       parameters:
       - description: Menu ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Data
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/types.Menu'
+      - description: Name
+        in: formData
+        name: name
+        type: string
+      - description: Price
+        in: formData
+        name: price
+        type: number
+      - description: New image
+        in: formData
+        name: image
+        type: file
       produces:
       - application/json
       responses:
         "200":
-          description: ok
+          description: OK
+          schema:
+            $ref: '#/definitions/types.Menu'
+        "400":
+          description: bad
+          schema:
+            type: string
+        "500":
+          description: fail
           schema:
             type: string
       security:
       - BearerAuth: []
-      summary: Update menu item (name/price)
+      summary: Update menu item (multipart)
       tags:
       - Menu
   /restaurant/orders:

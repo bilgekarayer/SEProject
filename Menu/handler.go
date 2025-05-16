@@ -106,28 +106,62 @@ func (h *Handler) CreateMenuItem(c echo.Context) error {
 }
 
 // UpdateMenuItem godoc
-// @Summary      Update menu item (name/price)
+// @Summary      Update menu item (multipart)
 // @Tags         Menu
 // @Security     BearerAuth
-// @Accept       json
+// @Accept       mpfd
 // @Produce      json
-// @Param        id   path int       true "Menu ID"
-// @Param        body body types.Menu true "Data"
-// @Success      200 {string} string "ok"
+// @Param        id            path     int    true   "Menu ID"
+// @Param        name          formData string false  "Name"
+// @Param        price         formData number false  "Price"
+// @Param        image         formData file   false  "New image"
+// @Success      200 {object}  types.Menu
+// @Failure      400 {string}  string "bad"
+// @Failure      500 {string}  string "fail"
 // @Router       /restaurant/menu/{id} [put]
 func (h *Handler) UpdateMenuItem(c echo.Context) error {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		return c.String(http.StatusBadRequest, "bad id")
 	}
-	var m types.Menu
-	if err := c.Bind(&m); err != nil {
-		return c.String(http.StatusBadRequest, "bad body")
+
+	// ---- form alanları (opsiyonel) ----
+	price, _ := strconv.ParseFloat(c.FormValue("price"), 64)
+	m := types.Menu{
+		Name:  c.FormValue("name"),
+		Price: price,
 	}
+
+	// güncelle metin/sayı
 	if err := h.service.UpdateMenuItem(c.Request().Context(), id, &m); err != nil {
 		return c.String(http.StatusInternalServerError, "fail")
 	}
-	return c.String(http.StatusOK, "ok")
+
+	// ---- resim var mı? ----
+	if fh, err := c.FormFile("image"); err == nil {
+		src, _ := fh.Open()
+		defer src.Close()
+
+		ext := filepath.Ext(fh.Filename)
+		dstPath := filepath.Join("uploads", "menu", strconv.Itoa(id)+ext)
+		if err = os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+			return c.String(http.StatusInternalServerError, "mkdir fail")
+		}
+		dst, _ := os.Create(dstPath)
+		defer dst.Close()
+		if _, err = io.Copy(dst, src); err != nil {
+			return c.String(http.StatusInternalServerError, "copy fail")
+		}
+
+		url := "/static/menu/" + strconv.Itoa(id) + ext
+		if err = h.service.UpdateMenuItemImage(c.Request().Context(), id, url); err != nil {
+			return c.String(http.StatusInternalServerError, "img update fail")
+		}
+		m.ImageURL = url
+	}
+
+	m.ID = id
+	return c.JSON(http.StatusOK, m)
 }
 
 // DeleteMenuItem godoc

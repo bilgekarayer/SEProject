@@ -113,7 +113,7 @@ const docTemplate = `{
                     }
                 ],
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -121,7 +121,7 @@ const docTemplate = `{
                 "tags": [
                     "Restaurant"
                 ],
-                "summary": "Update restaurant",
+                "summary": "Update restaurant (multipart)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -131,20 +131,53 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Restaurant info",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/types.Restaurant"
-                        }
+                        "type": "string",
+                        "description": "Name",
+                        "name": "name",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Description",
+                        "name": "description",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Location",
+                        "name": "location",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Cuisine",
+                        "name": "cuisine",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Avg price",
+                        "name": "avg_price",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Rating",
+                        "name": "rating",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "New image",
+                        "name": "image",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "ok",
+                        "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/types.Restaurant"
                         }
                     },
                     "400": {
@@ -643,7 +676,7 @@ const docTemplate = `{
                     }
                 ],
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -651,7 +684,7 @@ const docTemplate = `{
                 "tags": [
                     "Menu"
                 ],
-                "summary": "Update menu item (name/price)",
+                "summary": "Update menu item (multipart)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -661,18 +694,39 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Data",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/types.Menu"
-                        }
+                        "type": "string",
+                        "description": "Name",
+                        "name": "name",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Price",
+                        "name": "price",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "New image",
+                        "name": "image",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "ok",
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.Menu"
+                        }
+                    },
+                    "400": {
+                        "description": "bad",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "fail",
                         "schema": {
                             "type": "string"
                         }

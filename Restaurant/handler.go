@@ -106,30 +106,76 @@ func (h *Handler) CreateWithImage(c echo.Context) error {
 }
 
 // UpdateRestaurant godoc
-// @Summary      Update restaurant
+// @Summary      Update restaurant (multipart)
 // @Tags         Restaurant
 // @Security     BearerAuth
-// @Accept       json
+// @Accept       mpfd
 // @Produce      json
-// @Param        id    path      int              true  "Restaurant ID"
-// @Param        body  body      types.Restaurant true  "Restaurant info"
-// @Success      200   {string}  string           "ok"
-// @Failure      400   {string}  string           "bad"
-// @Failure      500   {string}  string           "fail"
-// @Router       /admin/restaurant/{id} [put]
+// @Param  id           path     int     true   "Restaurant ID"
+// @Param  name         formData string  false  "Name"
+// @Param  description  formData string  false  "Description"
+// @Param  location     formData string  false  "Location"
+// @Param  cuisine      formData string  false  "Cuisine"
+// @Param  avg_price    formData int     false  "Avg price"
+// @Param  rating       formData number  false  "Rating"
+// @Param  image        formData file    false  "New image"
+// @Success 200 {object} types.Restaurant
+// @Failure 400 {string} string "bad"
+// @Failure 500 {string} string "fail"
+// @Router /admin/restaurant/{id} [put]
 func (h *Handler) UpdateRestaurant(c echo.Context) error {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		return c.String(http.StatusBadRequest, "bad")
+		return c.String(http.StatusBadRequest, "bad id")
 	}
-	var r types.Restaurant
-	if err := c.Bind(&r); err != nil {
-		return c.String(http.StatusBadRequest, "bad")
+
+	// --- form alanları (opsiyonel) ---
+	avgPrice, _ := strconv.Atoi(c.FormValue("avg_price"))
+	rating, _ := strconv.ParseFloat(c.FormValue("rating"), 64)
+
+	r := types.Restaurant{
+		Name:        c.FormValue("name"),
+		Description: c.FormValue("description"),
+		Location:    c.FormValue("location"),
+		Cuisine:     c.FormValue("cuisine"),
 	}
+
+	if avgPrice != 0 {
+		r.AvgPrice = avgPrice
+	}
+	if rating != 0 {
+		r.Rating = rating
+	}
+
+	// DB güncelle (metin/sayı alanları)
 	if err := h.service.UpdateRestaurant(c.Request().Context(), id, &r); err != nil {
 		return c.String(http.StatusInternalServerError, "fail")
 	}
-	return c.String(http.StatusOK, "ok")
+
+	// --- resim var mı? ---
+	if fh, err := c.FormFile("image"); err == nil {
+		src, _ := fh.Open()
+		defer src.Close()
+
+		ext := filepath.Ext(fh.Filename)
+		dstPath := fmt.Sprintf("uploads/restaurants/%d%s", id, ext)
+		if err = os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+			return c.String(http.StatusInternalServerError, "mkdir fail")
+		}
+		dst, _ := os.Create(dstPath)
+		defer dst.Close()
+		if _, err = io.Copy(dst, src); err != nil {
+			return c.String(http.StatusInternalServerError, "copy fail")
+		}
+		url := "/static/restaurants/" + strconv.Itoa(id) + ext
+		if err = h.service.UpdateRestaurantImage(c.Request().Context(), id, url); err != nil {
+			return c.String(http.StatusInternalServerError, "img update fail")
+		}
+		r.ImageURL = url
+	}
+
+	r.ID = id
+	return c.JSON(http.StatusOK, r)
 }
 
 // DeleteRestaurant godoc
